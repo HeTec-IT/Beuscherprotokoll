@@ -20,6 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.28.4/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
 :root {
@@ -165,12 +166,62 @@ main { padding: 4px 16px 24px; flex: 1; }
 .druck-fotos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
 .druck-fotos img { width: 100%; border-radius: 6px; }
 .druck-unterschrift { max-width: 220px; margin-top: 14px; }
+.hauptmenue { display: flex; gap: 6px; margin-bottom: 4px; }
+.hauptmenue button { flex: 1; padding: 9px 6px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text-dim); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.hauptmenue button.aktiv { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.upload-hinweis { color: var(--text-dim); font-size: 13px; margin: 0 0 14px; }
+.upload-btn { width: 100%; padding: 14px 0; border-radius: 11px; border: none; background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+.upload-fortschritt p { color: var(--text-dim); font-size: 13px; margin: 10px 0 0; text-align: center; }
+.upload-fortschritt-balken { height: 8px; border-radius: 5px; background: var(--surface-2); overflow: hidden; }
+.upload-fortschritt-fuellung { height: 100%; background: var(--accent); transition: width .2s; }
+
+.abgleich-summe { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.abgleich-summe strong { font-size: 26px; font-variant-numeric: tabular-nums; }
+.abgleich-summe span { color: var(--text-dim); font-size: 13px; }
+.abgleich-balken { height: 8px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin-bottom: 16px; }
+.abgleich-balken-fuellung { height: 100%; background: var(--ok); transition: width .2s; }
+.abgleich-aktionen { display: flex; gap: 8px; }
+.abgleich-aktionen button { flex: 1; padding: 12px 0; border-radius: 11px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.abgleich-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow-y: auto; }
+.abgleich-liste li { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.abgleich-liste li.gefunden { opacity: .55; }
+.abgleich-status { color: var(--ok); font-weight: 700; }
+.abgleich-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.abgleich-liste li.gefunden .abgleich-name { text-decoration: line-through; }
+.abgleich-sn { color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+
+.scanner-overlay { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; align-items: center; justify-content: center; }
+.scanner-video { width: 100%; height: 100%; object-fit: cover; }
+.scanner-rahmen { position: absolute; top: 30%; left: 8%; right: 8%; bottom: 40%; border: 2px solid rgba(255,255,255,.75); border-radius: 14px; pointer-events: none; }
+.scanner-treffer { position: absolute; bottom: 88px; left: 20px; right: 20px; padding: 12px 16px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; background: var(--ok); color: #0a1f14; }
+.scanner-treffer.doppelt { background: var(--surface-2); color: #fff; }
+.scanner-treffer.unbekannt { background: var(--warn); color: #2a0d06; }
+.scanner-fehlertext { position: absolute; top: 20px; left: 20px; right: 20px; padding: 12px; border-radius: 10px; background: var(--warn); color: #2a0d06; font-size: 13px; text-align: center; }
+.scanner-manuell { position: absolute; bottom: 150px; left: 20px; right: 20px; display: flex; gap: 8px; }
+.scanner-manuell input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: none; font-size: 15px; background: rgba(255,255,255,.96); color: #111; font-variant-numeric: tabular-nums; }
+.scanner-manuell button { padding: 0 18px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.scanner-schliessen { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 13px 32px; border-radius: 24px; border: none; background: #fff; color: #111; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+.qr-bereich { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.qr-code { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
+.qr-hinweis { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 300px; }
+
+.bestand-druck table { font-size: 12px; }
+.bestand-druck td { vertical-align: top; padding: 5px 6px; }
+.bestand-druck tr.fehlend td { text-decoration: line-through; color: #999; }
+@media print {
+  body * { visibility: hidden; }
+  .bestand-druck, .bestand-druck * { visibility: visible; }
+  .druckbereich { position: static !important; left: 0 !important; width: auto !important; }
+  .bestand-druck { position: absolute; top: 0; left: 0; width: 100%; padding: 16px; }
+}
 </style>
 </head>
 <body>
 <div id="root"></div>
 
-<script type="text/babel">
+<script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo } = React;
 
 // ===== Konfiguration =====
@@ -244,6 +295,12 @@ function login_fehlertext(err) {
   if (code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential") return "E-Mail oder Passwort falsch.";
   if (code === "auth/too-many-requests") return "Zu viele Versuche. Später erneut probieren.";
   return "Anmeldung fehlgeschlagen.";
+}
+function speicherfehlertext(err) {
+  const code = err && err.code;
+  if (code === "permission-denied") return "Kein Zugriff auf die Datenbank - sind die Firestore-Regeln in der Firebase-Konsole veröffentlicht? (siehe README.md)";
+  if (code === "unavailable") return "Keine Verbindung zur Datenbank. Internet prüfen und erneut versuchen.";
+  return (err && err.message) || "Speichern fehlgeschlagen.";
 }
 
 function komprimiereBild(datei) {
@@ -556,7 +613,7 @@ function DruckAnsicht({ standort, datum, stueck, ist, soll, differenz, staubgesa
 }
 
 // ===== Neues Protokoll =====
-function NeuesProtokoll({ standort, datum }) {
+function NeuesProtokoll({ standort, datum, onGespeichert }) {
   const leereStueck = () => Object.fromEntries(STUECKELUNG.map((s) => [s.wert, ""]));
   const [stueck, setStueck] = useState(leereStueck);
   const [soll, setSoll] = useState("");
@@ -606,10 +663,14 @@ function NeuesProtokoll({ standort, datum }) {
     try {
       await protokollSpeichern({ standort, datum, stueck, ist, soll: sollNum, differenz, staubgesaugt, zumutbar, fotos, unterschrift });
       setStatus("gespeichert");
+      setTimeout(() => {
+        formularZuruecksetzen();
+        onGespeichert();
+      }, 500);
     } catch (err) {
       setStatus("fehler");
-      setFehlerText(err && err.message ? err.message : "Speichern fehlgeschlagen.");
-      throw err;
+      setFehlerText(speicherfehlertext(err));
+      console.error("Speichern fehlgeschlagen:", err);
     }
   }
 
@@ -621,9 +682,14 @@ function NeuesProtokoll({ standort, datum }) {
       await erstellePdf(druckRef.current, `Kassenprotokoll_${standort.id}_${datum}`);
       oeffneMailto({ standort, datum, ist, soll: sollNum, differenz, staubgesaugt, zumutbar });
       setStatus("gespeichert");
+      setTimeout(() => {
+        formularZuruecksetzen();
+        onGespeichert();
+      }, 500);
     } catch (err) {
       setStatus("fehler");
-      setFehlerText(err && err.message ? err.message : "Senden fehlgeschlagen.");
+      setFehlerText(speicherfehlertext(err));
+      console.error("Senden fehlgeschlagen:", err);
     }
   }
 
@@ -789,6 +855,454 @@ function Historie({ standort }) {
   );
 }
 
+// ===== O2 Bestandsführung =====
+let pdfjsPromise = null;
+function ladePdfJs() {
+  if (!pdfjsPromise) {
+    pdfjsPromise = import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.mjs").then((mod) => {
+      mod.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.worker.mjs";
+      return mod;
+    });
+  }
+  return pdfjsPromise;
+}
+let tesseractPromise = null;
+function ladeTesseract() {
+  if (!tesseractPromise) {
+    tesseractPromise = import("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.esm.min.js");
+  }
+  return tesseractPromise;
+}
+function ladeBarcodeDetector() {
+  return import("https://cdn.jsdelivr.net/npm/barcode-detector@2/dist/es/pure.js");
+}
+
+const BESTAND_STOPWORTE = new Set([
+  "JA", "NEIN", "DEMOS", "SMARTPHONES", "KOMMISSIONSWARENLAGER", "KOMMISSIONSWARENLAG", "LAGERART", "ER",
+  "ZEIL", "ZEILE", "ARTIKELGRUPP", "ARTIKELGRUPPE", "SERIENNUMM", "SERIENNUMMER",
+  "GEFUHRT", "GEFÜHRT", "MENG", "MENGE", "NUMM", "NUMMER", "NAME", "SEITE", "NR",
+]);
+function bereinigeArtikelname(roh) {
+  const worte = roh
+    .replace(/[\r\n]+/g, " ")
+    .split(/\s+/)
+    .filter((w) => w && !BESTAND_STOPWORTE.has(w.toUpperCase().replace(/[^A-ZÄÖÜ]/g, "")) && !/^\d{1,2}$/.test(w));
+  return worte.join(" ").replace(/\s+([,.])/g, "$1").trim();
+}
+
+function parseBestandstext(text) {
+  const artikelRegex = /\d{4}-\d{6}-\d/g;
+  const treffer = [];
+  let m;
+  while ((m = artikelRegex.exec(text))) {
+    treffer.push({ nummer: m[0], index: m.index, ende: artikelRegex.lastIndex });
+  }
+
+  const eintraege = [];
+  for (let i = 0; i < treffer.length; i++) {
+    const block = text.slice(treffer[i].ende, i + 1 < treffer.length ? treffer[i + 1].index : text.length);
+    const snMatch = block.match(/S\s*[\/I]\s*N\s*:?\s*([\d][\d,.\s]{4,})/i);
+    if (!snMatch) continue;
+    const seriennummern = [...new Set(snMatch[1].match(/\d{6,20}/g) || [])];
+    if (seriennummern.length === 0) continue;
+    // zweite Ziffer der Artikel-Nummer steht durch den Spaltenumbruch meist am Anfang der nächsten Zeile (z.B. "...-0" + "0")
+    const zweiteZiffer = block.match(/^\s*(\d)\b/);
+    const nummer = treffer[i].nummer + (zweiteZiffer ? zweiteZiffer[1] : "0");
+    const name = bereinigeArtikelname(block.slice(0, snMatch.index)) || nummer;
+    eintraege.push({ artikelNummer: nummer, name, seriennummern });
+  }
+  return eintraege.flatMap((e) => e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, gefunden: false })));
+}
+
+async function verarbeitePdf(datei, onFortschritt) {
+  const [pdfjsLib, TesseractMod] = await Promise.all([ladePdfJs(), ladeTesseract()]);
+  const arrayBuffer = await datei.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const worker = await TesseractMod.default.createWorker("eng");
+  let volltext = "";
+  try {
+    for (let i = 1; i <= pdf.numPages; i++) {
+      onFortschritt(i, pdf.numPages);
+      const seite = await pdf.getPage(i);
+      const viewport = seite.getViewport({ scale: 3 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await seite.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+      const { data } = await worker.recognize(canvas);
+      volltext += "\n" + data.text;
+    }
+  } finally {
+    await worker.terminate();
+  }
+  return parseBestandstext(volltext);
+}
+
+async function erstelleBestandsSession(standort, einheiten) {
+  const jetzt = firebase.firestore.Timestamp.now();
+  const ablauf = firebase.firestore.Timestamp.fromMillis(Date.now() + AUFBEWAHRUNG_TAGE * 86400000);
+  const ref = await db.collection("bestandssessions").add({
+    standortId: standort.id,
+    standortName: standort.name,
+    marke: standort.marke,
+    erstelltVon: auth.currentUser ? auth.currentUser.email : null,
+    erstelltAm: jetzt,
+    ablaufAm: ablauf,
+  });
+  for (let i = 0; i < einheiten.length; i += 450) {
+    const batch = db.batch();
+    for (const e of einheiten.slice(i, i + 450)) {
+      batch.set(ref.collection("einheiten").doc(e.sn), { artikelNummer: e.artikelNummer, name: e.name, gefunden: false });
+    }
+    await batch.commit();
+  }
+  return ref.id;
+}
+
+async function markiereGefunden(sessionId, sn) {
+  await db.collection("bestandssessions").doc(sessionId).collection("einheiten").doc(sn).update({
+    gefunden: true,
+    gefundenAm: firebase.firestore.Timestamp.now(),
+  });
+}
+
+function BestandUpload({ standort, onFertig }) {
+  const [status, setStatus] = useState("bereit");
+  const [fortschritt, setFortschritt] = useState({ seite: 0, gesamt: 0 });
+  const [fehlerText, setFehlerText] = useState("");
+  const inputRef = useRef(null);
+
+  async function dateiAuswaehlen(e) {
+    const datei = e.target.files[0];
+    e.target.value = "";
+    if (!datei) return;
+    setStatus("ocr");
+    setFehlerText("");
+    try {
+      const einheiten = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
+      if (einheiten.length === 0) {
+        setStatus("fehler");
+        setFehlerText("Keine Seriennummern erkannt. PDF prüfen oder erneut versuchen.");
+        return;
+      }
+      setStatus("speichert");
+      const sessionId = await erstelleBestandsSession(standort, einheiten);
+      onFertig(sessionId);
+    } catch (err) {
+      setStatus("fehler");
+      setFehlerText(speicherfehlertext(err));
+      console.error("Bestandsliste-Verarbeitung fehlgeschlagen:", err);
+    }
+  }
+
+  return (
+    <Section title="Bestandsliste hochladen">
+      <p className="upload-hinweis">PDF-Export der Lagerbestände für {standort.name}. Wird im Browser per OCR gelesen - bei mehreren Seiten dauert das etwas.</p>
+      {status === "ocr" || status === "speichert" ? (
+        <div className="upload-fortschritt">
+          <div className="upload-fortschritt-balken">
+            <div
+              className="upload-fortschritt-fuellung"
+              style={{ width: status === "speichert" ? "100%" : fortschritt.gesamt ? `${(fortschritt.seite / fortschritt.gesamt) * 100}%` : "0%" }}
+            />
+          </div>
+          <p>{status === "speichert" ? "Sitzung wird angelegt…" : `Seite ${fortschritt.seite} von ${fortschritt.gesamt} wird gelesen…`}</p>
+        </div>
+      ) : (
+        <button type="button" className="upload-btn" onClick={() => inputRef.current.click()}>PDF auswählen</button>
+      )}
+      {fehlerText && <div className="fehler-banner">{fehlerText}</div>}
+      <input ref={inputRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={dateiAuswaehlen} />
+    </Section>
+  );
+}
+
+function Kamerascanner({ einheiten, onTreffer, onClose }) {
+  const videoRef = useRef(null);
+  const [fehler, setFehler] = useState("");
+  const [meldung, setMeldung] = useState(null);
+  const [manuellerWert, setManuellerWert] = useState("");
+  const streamRef = useRef(null);
+  const detectorRef = useRef(null);
+  const laeuftRef = useRef(true);
+  const einheitenRef = useRef(einheiten);
+  const letzterRef = useRef({ code: null, zeit: 0 });
+
+  useEffect(() => {
+    einheitenRef.current = einheiten;
+  }, [einheiten]);
+
+  function verarbeiteCode(rohWert) {
+    const wert = (rohWert || "").replace(/\D/g, "");
+    if (!wert) return;
+    const einheit = einheitenRef.current.find((e) => e.sn === wert);
+    if (einheit && !einheit.gefunden) {
+      onTreffer(wert);
+      setMeldung({ text: einheit.name, art: "gefunden" });
+      if (navigator.vibrate) navigator.vibrate(80);
+    } else if (einheit) {
+      setMeldung({ text: "Bereits erfasst", art: "doppelt" });
+    } else {
+      setMeldung({ text: `${wert} nicht in der Liste`, art: "unbekannt" });
+      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+    }
+    setTimeout(() => setMeldung(null), 1600);
+  }
+
+  function manuellAbsenden(e) {
+    e.preventDefault();
+    verarbeiteCode(manuellerWert);
+    setManuellerWert("");
+  }
+
+  useEffect(() => {
+    laeuftRef.current = true;
+    async function starten() {
+      try {
+        const mod = await ladeBarcodeDetector();
+        detectorRef.current = new mod.BarcodeDetector({ formats: ["code_128", "code_39", "ean_13", "itf"] });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        streamRef.current = stream;
+        if (!laeuftRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        schleife();
+      } catch (err) {
+        setFehler(err && err.message ? err.message : "Kamera/Scanner konnte nicht gestartet werden - manuelle Eingabe geht trotzdem.");
+      }
+    }
+    async function schleife() {
+      while (laeuftRef.current) {
+        try {
+          if (videoRef.current && videoRef.current.readyState >= 2 && detectorRef.current) {
+            const codes = await detectorRef.current.detect(videoRef.current);
+            if (codes.length > 0) {
+              const wert = (codes[0].rawValue || "").replace(/\D/g, "");
+              const jetzt = Date.now();
+              if (wert && (wert !== letzterRef.current.code || jetzt - letzterRef.current.zeit > 1500)) {
+                letzterRef.current = { code: wert, zeit: jetzt };
+                verarbeiteCode(wert);
+              }
+            }
+          }
+        } catch (e) {
+          // einzelne Frame-Fehler ignorieren, weiter scannen
+        }
+        await new Promise((r) => setTimeout(r, 260));
+      }
+    }
+    starten();
+    return () => {
+      laeuftRef.current = false;
+      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  return (
+    <div className="scanner-overlay">
+      <video ref={videoRef} className="scanner-video" playsInline muted />
+      <div className="scanner-rahmen" />
+      <form className="scanner-manuell" onSubmit={manuellAbsenden}>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="IMEI/S/N manuell eingeben"
+          value={manuellerWert}
+          onChange={(e) => setManuellerWert(e.target.value)}
+        />
+        <button type="submit">Erfassen</button>
+      </form>
+      {meldung && <div className={`scanner-treffer ${meldung.art}`}>{meldung.text}</div>}
+      {fehler && <div className="scanner-fehlertext">{fehler}</div>}
+      <button type="button" className="scanner-schliessen" onClick={onClose}>Fertig</button>
+    </div>
+  );
+}
+
+function BestandDruckansicht({ standort, einheiten }) {
+  return (
+    <div className="druck-inhalt bestand-druck">
+      <h1>Bestandsabgleich</h1>
+      <p>{standort.name} · {datumDE(heuteISO())}</p>
+      <table>
+        <tbody>
+          {einheiten.map((e) => (
+            <tr key={e.sn} className={e.gefunden ? "" : "fehlend"}>
+              <td>{e.gefunden ? "\u2713" : ""}</td>
+              <td>{e.name}</td>
+              <td>{e.sn}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BestandQr({ sessionId }) {
+  const containerRef = useRef(null);
+  const url = `${window.location.origin}${window.location.pathname}?bestand=${sessionId}`;
+
+  useEffect(() => {
+    if (!containerRef.current || !window.QRCode) return;
+    containerRef.current.innerHTML = "";
+    new window.QRCode(containerRef.current, {
+      text: url,
+      width: 168,
+      height: 168,
+      colorDark: "#12141a",
+      colorLight: "#ffffff",
+      correctLevel: window.QRCode.CorrectLevel.M,
+    });
+  }, [sessionId]);
+
+  return (
+    <Section title="Mit Handy weiterscannen">
+      <div className="qr-bereich">
+        <div ref={containerRef} className="qr-code" />
+        <p className="qr-hinweis">QR-Code mit dem Handy scannen (normale Kamera-App reicht), um diese Liste dort zu öffnen und weiterzuscannen.</p>
+      </div>
+    </Section>
+  );
+}
+
+function BestandAbgleich({ standort, sessionId, einheiten, onScannen, onNeueListe, druckRef }) {
+  const gefunden = einheiten.filter((e) => e.gefunden).length;
+  const gesamt = einheiten.length;
+  return (
+    <div>
+      <BestandQr sessionId={sessionId} />
+      <Section title="Abgleich">
+        <p className="upload-hinweis">{standort.name}</p>
+        <div className="abgleich-summe">
+          <strong>{gefunden} / {gesamt}</strong>
+          <span>erfasst</span>
+        </div>
+        <div className="abgleich-balken">
+          <div className="abgleich-balken-fuellung" style={{ width: gesamt ? `${(gefunden / gesamt) * 100}%` : "0%" }} />
+        </div>
+        <div className="abgleich-aktionen">
+          <button type="button" className="btn-primaer" onClick={onScannen}>Scannen</button>
+          <button type="button" className="btn-sekundaer" onClick={onNeueListe}>Neue Liste</button>
+        </div>
+      </Section>
+      <Section title={`Liste (${gesamt})`}>
+        <ul className="abgleich-liste">
+          {einheiten.map((e) => (
+            <li key={e.sn} className={e.gefunden ? "gefunden" : ""}>
+              <span className="abgleich-status">{e.gefunden ? "✓" : ""}</span>
+              <span className="abgleich-name">{e.name}</span>
+              <span className="abgleich-sn">{e.sn}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
+      <div className="aktionen">
+        <button type="button" className="btn-sekundaer" onClick={() => window.print()}>Drucken</button>
+        <button type="button" className="btn-primaer" onClick={() => erstellePdf(druckRef.current, `Bestandsabgleich_${standort.id}_${heuteISO()}`)}>Als PDF speichern</button>
+      </div>
+    </div>
+  );
+}
+
+function liesSessionIdAusURL() {
+  return new URLSearchParams(window.location.search).get("bestand") || null;
+}
+
+function Bestandsfuehrung({ standort }) {
+  const [sessionId, setSessionId] = useState(liesSessionIdAusURL);
+  const [sessionStandort, setSessionStandort] = useState(null);
+  const [einheiten, setEinheiten] = useState(null);
+  const [scannerOffen, setScannerOffen] = useState(false);
+  const [fehlerText, setFehlerText] = useState("");
+  const druckRef = useRef(null);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setEinheiten(null);
+      setSessionStandort(null);
+      return;
+    }
+    setFehlerText("");
+    let aktiv = true;
+    db.collection("bestandssessions").doc(sessionId).get()
+      .then((doc) => {
+        if (!aktiv) return;
+        if (!doc.exists) {
+          setFehlerText("Sitzung nicht gefunden oder abgelaufen.");
+          return;
+        }
+        const d = doc.data();
+        setSessionStandort({ id: d.standortId, name: d.standortName, marke: d.marke });
+      })
+      .catch((err) => aktiv && setFehlerText(speicherfehlertext(err)));
+
+    const unsub = db.collection("bestandssessions").doc(sessionId).collection("einheiten").onSnapshot(
+      (snap) => aktiv && setEinheiten(snap.docs.map((d) => ({ sn: d.id, ...d.data() }))),
+      (err) => aktiv && setFehlerText(speicherfehlertext(err))
+    );
+    return () => {
+      aktiv = false;
+      unsub();
+    };
+  }, [sessionId]);
+
+  function sessionErstellt(id) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("bestand", id);
+    window.history.replaceState({}, "", url);
+    setSessionId(id);
+  }
+
+  function neueListe() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("bestand");
+    window.history.replaceState({}, "", url);
+    setSessionId(null);
+  }
+
+  async function treffer(sn) {
+    try {
+      await markiereGefunden(sessionId, sn);
+    } catch (err) {
+      setFehlerText(speicherfehlertext(err));
+    }
+  }
+
+  if (!sessionId) {
+    return <BestandUpload standort={standort} onFertig={sessionErstellt} />;
+  }
+  if (fehlerText && !einheiten) {
+    return <div className="fehler-banner" style={{ margin: "16px 0" }}>{fehlerText}</div>;
+  }
+  if (!einheiten || !sessionStandort) {
+    return <p className="historie-status">Sitzung wird geladen…</p>;
+  }
+
+  return (
+    <div>
+      <BestandAbgleich
+        standort={sessionStandort}
+        sessionId={sessionId}
+        einheiten={einheiten}
+        onScannen={() => setScannerOffen(true)}
+        onNeueListe={neueListe}
+        druckRef={druckRef}
+      />
+      {fehlerText && <div className="fehler-banner" style={{ margin: "0 16px 16px" }}>{fehlerText}</div>}
+      {scannerOffen && <Kamerascanner einheiten={einheiten} onTreffer={treffer} onClose={() => setScannerOffen(false)} />}
+      <div className="druckbereich" ref={druckRef}>
+        <BestandDruckansicht standort={sessionStandort} einheiten={einheiten} />
+      </div>
+    </div>
+  );
+}
+
 // ===== Login =====
 function Login() {
   const [email, setEmail] = useState("");
@@ -837,7 +1351,7 @@ function SplashLoader() {
 }
 
 // ===== Kopfbereich + Hauptapp =====
-function Kopfbereich({ standort, onStandortWechsel, datum, onDatumWechsel, tab, onTabWechsel }) {
+function Kopfbereich({ standort, onStandortWechsel, datum, onDatumWechsel, bereich, onBereichWechsel, tab, onTabWechsel }) {
   return (
     <header className="kopf">
       <div className="kopf-marke">
@@ -851,15 +1365,22 @@ function Kopfbereich({ standort, onStandortWechsel, datum, onDatumWechsel, tab, 
         </select>
         <input className="datum-input" type="date" value={datum} onChange={(e) => onDatumWechsel(e.target.value)} />
       </div>
-      <nav className="tabs">
-        <button type="button" className={tab === "neu" ? "aktiv" : ""} onClick={() => onTabWechsel("neu")}>Neues Protokoll</button>
-        <button type="button" className={tab === "historie" ? "aktiv" : ""} onClick={() => onTabWechsel("historie")}>Historie</button>
+      <nav className="hauptmenue">
+        <button type="button" className={bereich === "kassencheck" ? "aktiv" : ""} onClick={() => onBereichWechsel("kassencheck")}>Kassencheck</button>
+        <button type="button" className={bereich === "bestand" ? "aktiv" : ""} onClick={() => onBereichWechsel("bestand")}>O2 Bestandsführung</button>
       </nav>
+      {bereich === "kassencheck" && (
+        <nav className="tabs">
+          <button type="button" className={tab === "neu" ? "aktiv" : ""} onClick={() => onTabWechsel("neu")}>Neues Protokoll</button>
+          <button type="button" className={tab === "historie" ? "aktiv" : ""} onClick={() => onTabWechsel("historie")}>Historie</button>
+        </nav>
+      )}
     </header>
   );
 }
 
 function Hauptapp() {
+  const [bereich, setBereich] = useState("kassencheck");
   const [tab, setTab] = useState("neu");
   const [standortId, setStandortId] = useState(STANDORTE[0].id);
   const [datum, setDatum] = useState(heuteISO());
@@ -867,9 +1388,15 @@ function Hauptapp() {
 
   return (
     <div className={`app-shell ${standort.marke}`}>
-      <Kopfbereich standort={standort} onStandortWechsel={setStandortId} datum={datum} onDatumWechsel={setDatum} tab={tab} onTabWechsel={setTab} />
+      <Kopfbereich standort={standort} onStandortWechsel={setStandortId} datum={datum} onDatumWechsel={setDatum} bereich={bereich} onBereichWechsel={setBereich} tab={tab} onTabWechsel={setTab} />
       <main>
-        {tab === "neu" ? <NeuesProtokoll key={standort.id + datum} standort={standort} datum={datum} /> : <Historie standort={standort} />}
+        {bereich === "bestand" ? (
+          <Bestandsfuehrung key={standort.id} standort={standort} />
+        ) : tab === "neu" ? (
+          <NeuesProtokoll key={standort.id + datum} standort={standort} datum={datum} onGespeichert={() => setTab("historie")} />
+        ) : (
+          <Historie standort={standort} />
+        )}
       </main>
     </div>
   );
@@ -883,7 +1410,45 @@ function App() {
   return <Hauptapp />;
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+class Fehlergrenze extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { fehler: null };
+  }
+  static getDerivedStateFromError(fehler) {
+    return { fehler };
+  }
+  componentDidCatch(fehler, info) {
+    console.error("Unerwarteter Fehler:", fehler, info);
+  }
+  render() {
+    if (this.state.fehler) {
+      return (
+        <div className="login-wrap">
+          <div className="login-card">
+            <div className="login-icon" style={{ background: "var(--warn)" }}>!</div>
+            <h1>Etwas ist schiefgelaufen</h1>
+            <p className="login-sub">{this.state.fehler.message || "Unerwarteter Fehler."}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{ padding: "13px", borderRadius: "11px", border: "none", background: "var(--accent)", color: "#fff", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}
+            >
+              Neu laden
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <Fehlergrenze>
+    <App />
+  </Fehlergrenze>
+);
 </script>
 
 <script>
