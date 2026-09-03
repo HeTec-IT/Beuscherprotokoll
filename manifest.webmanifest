@@ -1,0 +1,16 @@
+{
+  "name": "Filialprotokoll",
+  "short_name": "Filialprotokoll",
+  "description": "Kassenprotokoll, Checkliste, Fotoprotokoll und Unterschrift für die HeTec-Standorte",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#12141a",
+  "theme_color": "#12141a",
+  "orientation": "portrait",
+  "lang": "de",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
