@@ -246,6 +246,7 @@ main { padding: 4px 16px 24px; flex: 1; }
   .bestand-druck, .bestand-druck * { visibility: visible; }
   .druckbereich { position: static !important; left: 0 !important; width: auto !important; }
   .bestand-druck { position: absolute; top: 0; left: 0; width: 100%; padding: 16px; }
+  .bestand-druck tr { break-inside: avoid; page-break-inside: avoid; }
 }
 </style>
 </head>
@@ -364,22 +365,41 @@ function komprimiereBild(datei) {
 }
 
 async function erstellePdf(element, dateiname) {
-  const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+  const scale = 2;
+  const containerOben = element.getBoundingClientRect().top;
+  // Grenzen aller Tabellenzeilen merken (in CSS-Pixel relativ zum Element), damit der Seitenschnitt
+  // nie mitten durch eine Zeile (z.B. S/N-Text + Barcode) geht, sondern immer dazwischen.
+  const zeilenGrenzenPx = Array.from(element.querySelectorAll("tr")).map(
+    (z) => (z.getBoundingClientRect().bottom - containerOben) * scale
+  );
+
+  const canvas = await html2canvas(element, { scale, backgroundColor: "#ffffff", useCORS: true });
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF("p", "mm", "a4");
-  const seitenBreite = 210;
-  const seitenHoehe = 297;
-  const bildHoehe = (canvas.height * seitenBreite) / canvas.width;
-  const bildDaten = canvas.toDataURL("image/jpeg", 0.85);
-  let uebrig = bildHoehe;
-  let position = 0;
-  pdf.addImage(bildDaten, "JPEG", 0, position, seitenBreite, bildHoehe);
-  uebrig -= seitenHoehe;
-  while (uebrig > 0) {
-    position -= seitenHoehe;
-    pdf.addPage();
-    pdf.addImage(bildDaten, "JPEG", 0, position, seitenBreite, bildHoehe);
-    uebrig -= seitenHoehe;
+  const seitenBreiteMm = 210;
+  const seitenHoeheMm = 297;
+  const seitenHoehePx = (seitenHoeheMm * canvas.width) / seitenBreiteMm;
+
+  let versatzPx = 0;
+  let ersteSeite = true;
+  while (versatzPx < canvas.height - 2) {
+    const maxEndePx = Math.min(versatzPx + seitenHoehePx, canvas.height);
+    const passendeGrenze = [...zeilenGrenzenPx].reverse().find((g) => g > versatzPx + 5 && g <= maxEndePx);
+    const schnittPx = passendeGrenze || maxEndePx;
+    const hoehePx = Math.max(1, Math.round(schnittPx - versatzPx));
+
+    const seiteCanvas = document.createElement("canvas");
+    seiteCanvas.width = canvas.width;
+    seiteCanvas.height = hoehePx;
+    seiteCanvas.getContext("2d").drawImage(canvas, 0, -Math.round(versatzPx));
+    const seiteBild = seiteCanvas.toDataURL("image/jpeg", 0.85);
+
+    if (!ersteSeite) pdf.addPage();
+    ersteSeite = false;
+    const hoeheMm = (hoehePx * seitenBreiteMm) / canvas.width;
+    pdf.addImage(seiteBild, "JPEG", 0, 0, seitenBreiteMm, hoeheMm);
+
+    versatzPx += hoehePx;
   }
   pdf.save(`${dateiname}.pdf`);
 }
