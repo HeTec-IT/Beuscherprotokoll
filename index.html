@@ -1097,11 +1097,16 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
 
   useEffect(() => {
     laeuftRef.current = true;
+    const erfassCanvas = document.createElement("canvas");
+    const erfassCtx = erfassCanvas.getContext("2d", { willReadFrequently: true });
+
     async function starten() {
       try {
         const mod = await ladeBarcodeDetector();
         detectorRef.current = new mod.BarcodeDetector({ formats: ["code_128", "code_39", "ean_13", "itf"] });
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+        });
         streamRef.current = stream;
         if (!laeuftRef.current) {
           stream.getTracks().forEach((t) => t.stop());
@@ -1117,10 +1122,18 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
       }
     }
     async function schleife() {
+      let fehlerFolge = 0;
       while (laeuftRef.current) {
         try {
-          if (videoRef.current && videoRef.current.readyState >= 2 && detectorRef.current) {
-            const codes = await detectorRef.current.detect(videoRef.current);
+          const video = videoRef.current;
+          if (video && video.readyState >= 2 && detectorRef.current && video.videoWidth) {
+            if (erfassCanvas.width !== video.videoWidth) {
+              erfassCanvas.width = video.videoWidth;
+              erfassCanvas.height = video.videoHeight;
+            }
+            erfassCtx.drawImage(video, 0, 0, erfassCanvas.width, erfassCanvas.height);
+            const codes = await detectorRef.current.detect(erfassCanvas);
+            fehlerFolge = 0;
             if (codes.length > 0) {
               const wert = (codes[0].rawValue || "").replace(/\D/g, "");
               const jetzt = Date.now();
@@ -1131,9 +1144,13 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
             }
           }
         } catch (e) {
-          // einzelne Frame-Fehler ignorieren, weiter scannen
+          fehlerFolge++;
+          if (fehlerFolge === 5) {
+            setFehler(`Scanner-Fehler: ${e && e.message ? e.message : e} - manuelle Eingabe geht trotzdem.`);
+            console.error("Barcode-Erkennung fehlgeschlagen:", e);
+          }
         }
-        await new Promise((r) => setTimeout(r, 260));
+        await new Promise((r) => setTimeout(r, 200));
       }
     }
     starten();
