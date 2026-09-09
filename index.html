@@ -233,10 +233,14 @@ main { padding: 4px 16px 24px; flex: 1; }
 .qr-code { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
 .qr-hinweis { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 300px; }
 
-.bestand-druck table { font-size: 12px; }
-.bestand-druck td { vertical-align: top; padding: 5px 6px; }
-.fehlend-barcode { display: block; margin-top: 3px; height: 34px; text-decoration: none; }
-.bestand-druck tr.fehlend td { text-decoration: line-through; color: #999; }
+.bestand-druck table.original-format { width: 100%; border-collapse: collapse; font-size: 11px; }
+.bestand-druck table.original-format th { text-align: left; padding: 5px 6px; border-bottom: 2px solid #bbb; background: #eef1fa; font-size: 9.5px; text-transform: uppercase; letter-spacing: .02em; }
+.bestand-druck table.original-format td { vertical-align: top; padding: 3px 6px; }
+.bestand-druck tr.artikel-kopf td { padding-top: 8px; font-weight: 700; border-top: 1px solid #ddd; }
+.bestand-druck tr.sn-ok td, .bestand-druck tr.sn-fehlt td { padding-left: 22px; font-variant-numeric: tabular-nums; color: #333; }
+.bestand-druck tr.sn-ok td { color: #2a8a55; }
+.bestand-druck tr.sn-fehlt td { text-decoration: line-through; color: #b23; }
+.fehlend-barcode { display: block; margin: 3px 0 4px; height: 34px; text-decoration: none; }
 @media print {
   body * { visibility: hidden; }
   .bestand-druck, .bestand-druck * { visibility: visible; }
@@ -936,9 +940,13 @@ function parseBestandstext(text) {
     const zweiteZiffer = block.match(/^\s*(\d)\b/);
     const nummer = treffer[i].nummer + (zweiteZiffer ? zweiteZiffer[1] : "0");
     const name = bereinigeArtikelname(block.slice(0, snMatch.index)) || nummer;
-    eintraege.push({ artikelNummer: nummer, name, seriennummern });
+    // Zeile-Nummer steht im Original direkt vor der Artikel-Nummer (kleine OCR-Störzeichen dazwischen tolerieren)
+    const vorText = text.slice(Math.max(0, treffer[i].index - 10), treffer[i].index);
+    const zeileMatch = vorText.match(/(\d{1,3})[^\d]{0,6}$/);
+    const zeile = zeileMatch ? zeileMatch[1] : "";
+    eintraege.push({ artikelNummer: nummer, name, zeile, seriennummern });
   }
-  return eintraege.flatMap((e) => e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, gefunden: false })));
+  return eintraege.flatMap((e) => e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, gefunden: false })));
 }
 
 async function verarbeitePdf(datei, onFortschritt) {
@@ -1312,22 +1320,55 @@ function FehlendBarcode({ wert }) {
   return <svg ref={ref} className="fehlend-barcode" />;
 }
 
+function gruppiereNachArtikel(einheiten) {
+  const gruppen = new Map();
+  for (const e of einheiten) {
+    if (!gruppen.has(e.artikelNummer)) {
+      gruppen.set(e.artikelNummer, { artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, einheiten: [] });
+    }
+    gruppen.get(e.artikelNummer).einheiten.push(e);
+  }
+  return [...gruppen.values()];
+}
+
 function BestandDruckansicht({ standort, einheiten }) {
+  const gruppen = gruppiereNachArtikel(einheiten);
   return (
     <div className="druck-inhalt bestand-druck">
       <h1>Bestandsabgleich</h1>
       <p>{standort.name} · {datumDE(heuteISO())}</p>
-      <table>
+      <table className="original-format">
+        <thead>
+          <tr>
+            <th>Zeile</th>
+            <th>Artikel-Nummer</th>
+            <th>Artikel-Name</th>
+            <th>Seriennummer geführt</th>
+            <th>Menge</th>
+            <th>Lagerart</th>
+          </tr>
+        </thead>
         <tbody>
-          {einheiten.map((e) => (
-            <tr key={e.sn} className={e.gefunden ? "" : "fehlend"}>
-              <td>{e.gefunden ? "\u2713" : ""}</td>
-              <td>{e.name}</td>
-              <td>
-                {e.sn}
-                {!e.gefunden && <FehlendBarcode wert={e.sn} />}
-              </td>
-            </tr>
+          {gruppen.map((g) => (
+            <React.Fragment key={g.artikelNummer}>
+              <tr className="artikel-kopf">
+                <td>{g.zeile}</td>
+                <td>{g.artikelNummer}</td>
+                <td>{g.name}</td>
+                <td>JA</td>
+                <td>{g.einheiten.length}</td>
+                <td>Kommissionswarenlager</td>
+              </tr>
+              {g.einheiten.map((e) => (
+                <tr key={e.sn} className={e.gefunden ? "sn-ok" : "sn-fehlt"}>
+                  <td colSpan={3}></td>
+                  <td colSpan={3}>
+                    {e.gefunden ? "\u2713" : "\u2717"} S/N: {e.sn}
+                    {!e.gefunden && <FehlendBarcode wert={e.sn} />}
+                  </td>
+                </tr>
+              ))}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
