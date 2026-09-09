@@ -21,6 +21,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
 
 <style>
 :root {
@@ -191,6 +192,14 @@ main { padding: 4px 16px 24px; flex: 1; }
 .abgleich-aktionen button { flex: 1; padding: 12px 0; border-radius: 11px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .abgleich-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow-y: auto; }
 .such-feld { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; margin-bottom: 10px; }
+.handscanner-form { display: flex; gap: 8px; }
+.handscanner-input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
+.handscanner-rueckmeldung { margin-top: 10px; padding: 11px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; text-align: center; }
+.handscanner-rueckmeldung.gefunden { background: rgba(52,199,123,.16); color: var(--ok); border: 1px solid var(--ok); }
+.handscanner-rueckmeldung.doppelt { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
+.handscanner-rueckmeldung.unbekannt { background: rgba(240,101,74,.16); color: var(--warn); border: 1px solid var(--warn); }
+.scanner-taschenlampe { position: absolute; top: 20px; right: 20px; padding: 9px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,.4); background: rgba(0,0,0,.45); color: #fff; font-size: 13px; cursor: pointer; }
+.scanner-taschenlampe.an { background: rgba(255,255,255,.92); color: #111; }
 .abgleich-liste li { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .abgleich-liste li.gefunden { opacity: .55; }
 .abgleich-status { color: var(--ok); font-weight: 700; }
@@ -207,14 +216,18 @@ main { padding: 4px 16px 24px; flex: 1; }
 @keyframes blitz-aus { from { opacity: 1; } to { opacity: 0; } }
 .scanner-rahmen { position: absolute; top: 30%; left: 8%; right: 8%; bottom: 40%; border: 2px solid rgba(255,255,255,.75); border-radius: 14px; pointer-events: none; overflow: hidden; }
 .scanner-linie { position: absolute; left: 4%; right: 4%; top: 50%; height: 2px; background: #ff3b30; box-shadow: 0 0 8px 1px rgba(255,59,48,.8); transform: translateY(-50%); }
-.scanner-treffer { position: absolute; bottom: 88px; left: 20px; right: 20px; padding: 12px 16px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; background: var(--ok); color: #0a1f14; }
+.scanner-treffer { position: absolute; bottom: 190px; left: 20px; right: 20px; padding: 12px 16px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; background: var(--ok); color: #0a1f14; }
 .scanner-treffer.doppelt { background: var(--surface-2); color: #fff; }
 .scanner-treffer.unbekannt { background: var(--warn); color: #2a0d06; }
 .scanner-fehlertext { position: absolute; top: 20px; left: 20px; right: 20px; padding: 12px; border-radius: 10px; background: var(--warn); color: #2a0d06; font-size: 13px; text-align: center; }
-.scanner-manuell { position: absolute; bottom: 150px; left: 20px; right: 20px; display: flex; gap: 8px; }
+.scanner-letzte { position: absolute; bottom: 122px; left: 20px; right: 20px; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+.scanner-letzte-zeile { background: rgba(0,0,0,.55); backdrop-filter: blur(2px); color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 8px; display: flex; justify-content: space-between; gap: 8px; }
+.scanner-letzte-zeile span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scanner-letzte-zeile span:last-child { opacity: .65; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.scanner-manuell { position: absolute; bottom: 66px; left: 20px; right: 20px; display: flex; gap: 8px; }
 .scanner-manuell input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: none; font-size: 15px; background: rgba(255,255,255,.96); color: #111; font-variant-numeric: tabular-nums; }
 .scanner-manuell button { padding: 0 18px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
-.scanner-schliessen { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 13px 32px; border-radius: 24px; border: none; background: #fff; color: #111; font-size: 14px; font-weight: 700; cursor: pointer; }
+.scanner-schliessen { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); padding: 11px 28px; border-radius: 20px; border: none; background: #fff; color: #111; font-size: 13px; font-weight: 700; cursor: pointer; }
 
 .qr-bereich { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .qr-code { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
@@ -222,6 +235,7 @@ main { padding: 4px 16px 24px; flex: 1; }
 
 .bestand-druck table { font-size: 12px; }
 .bestand-druck td { vertical-align: top; padding: 5px 6px; }
+.fehlend-barcode { display: block; margin-top: 3px; height: 34px; text-decoration: none; }
 .bestand-druck tr.fehlend td { text-decoration: line-through; color: #999; }
 @media print {
   body * { visibility: hidden; }
@@ -1062,77 +1076,88 @@ function BestandUpload({ standort, onFertig }) {
   );
 }
 
+let geteilterAudioCtx = null;
+function spieleTon(art) {
+  try {
+    if (!geteilterAudioCtx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      geteilterAudioCtx = new AudioCtx();
+    }
+    const ctx = geteilterAudioCtx;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const jetzt = ctx.currentTime;
+    function ton(start, dauer, frequenz) {
+      const osz = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osz.type = "sine";
+      osz.frequency.value = frequenz;
+      gain.gain.setValueAtTime(0.0001, jetzt + start);
+      gain.gain.exponentialRampToValueAtTime(0.22, jetzt + start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, jetzt + start + dauer);
+      osz.connect(gain);
+      gain.connect(ctx.destination);
+      osz.start(jetzt + start);
+      osz.stop(jetzt + start + dauer + 0.02);
+    }
+    if (art === "gefunden") ton(0, 0.11, 1050);
+    else if (art === "doppelt") ton(0, 0.09, 700);
+    else {
+      ton(0, 0.09, 480);
+      ton(0.12, 0.13, 320);
+    }
+  } catch (e) {
+    // Web Audio evtl. nicht verfügbar/erlaubt - Ton einfach auslassen
+  }
+}
+
+// Gemeinsame Bewertung eines erfassten Codes (Kamera, Handscanner/PC oder manuelle Eingabe)
+function bewerteCode(rohWert, einheitenListe, onTreffer) {
+  const wert = (rohWert || "").replace(/\D/g, "");
+  if (!wert) return null;
+  const einheit = einheitenListe.find((e) => e.sn === wert);
+  let ergebnis;
+  if (einheit && !einheit.gefunden) {
+    onTreffer(wert);
+    ergebnis = { art: "gefunden", text: einheit.name, wert };
+  } else if (einheit) {
+    ergebnis = { art: "doppelt", text: "Bereits erfasst", wert };
+  } else {
+    ergebnis = { art: "unbekannt", text: `${wert} nicht in der Liste`, wert };
+  }
+  spieleTon(ergebnis.art);
+  return ergebnis;
+}
+
 function Kamerascanner({ einheiten, onTreffer, onClose }) {
   const videoRef = useRef(null);
   const [fehler, setFehler] = useState("");
   const [meldung, setMeldung] = useState(null);
   const [blitz, setBlitz] = useState(null);
+  const [letzteScans, setLetzteScans] = useState([]);
   const [manuellerWert, setManuellerWert] = useState("");
+  const [taschenlampeAn, setTaschenlampeAn] = useState(false);
+  const [taschenlampeVerfuegbar, setTaschenlampeVerfuegbar] = useState(false);
   const streamRef = useRef(null);
   const detectorRef = useRef(null);
   const laeuftRef = useRef(true);
   const einheitenRef = useRef(einheiten);
   const letzterRef = useRef({ code: null, zeit: 0 });
-  const audioCtxRef = useRef(null);
 
   useEffect(() => {
     einheitenRef.current = einheiten;
   }, [einheiten]);
 
-  function spieleTon(art) {
-    try {
-      if (!audioCtxRef.current) {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        audioCtxRef.current = new AudioCtx();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") ctx.resume().catch(() => {});
-      const jetzt = ctx.currentTime;
-      function ton(start, dauer, frequenz) {
-        const osz = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osz.type = "sine";
-        osz.frequency.value = frequenz;
-        gain.gain.setValueAtTime(0.0001, jetzt + start);
-        gain.gain.exponentialRampToValueAtTime(0.22, jetzt + start + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, jetzt + start + dauer);
-        osz.connect(gain);
-        gain.connect(ctx.destination);
-        osz.start(jetzt + start);
-        osz.stop(jetzt + start + dauer + 0.02);
-      }
-      if (art === "gefunden") ton(0, 0.11, 1050);
-      else if (art === "doppelt") ton(0, 0.09, 700);
-      else {
-        ton(0, 0.09, 480);
-        ton(0.12, 0.13, 320);
-      }
-    } catch (e) {
-      // Web Audio evtl. nicht verfügbar/erlaubt - Ton einfach auslassen
-    }
-  }
-
   function verarbeiteCode(rohWert) {
-    const wert = (rohWert || "").replace(/\D/g, "");
-    if (!wert) return;
-    const einheit = einheitenRef.current.find((e) => e.sn === wert);
-    let art;
-    if (einheit && !einheit.gefunden) {
-      art = "gefunden";
-      onTreffer(wert);
-      setMeldung({ text: einheit.name, art });
+    const ergebnis = bewerteCode(rohWert, einheitenRef.current, onTreffer);
+    if (!ergebnis) return;
+    setMeldung({ text: ergebnis.text, art: ergebnis.art });
+    if (ergebnis.art === "gefunden") {
       if (navigator.vibrate) navigator.vibrate(80);
-    } else if (einheit) {
-      art = "doppelt";
-      setMeldung({ text: "Bereits erfasst", art });
-    } else {
-      art = "unbekannt";
-      setMeldung({ text: `${wert} nicht in der Liste`, art });
-      if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+      setLetzteScans((prev) => [{ sn: ergebnis.wert, text: ergebnis.text }, ...prev].slice(0, 3));
     }
-    spieleTon(art);
-    setBlitz(art);
+    if (ergebnis.art === "unbekannt" && navigator.vibrate) navigator.vibrate([40, 60, 40]);
+    setBlitz(ergebnis.art);
     setTimeout(() => setBlitz(null), 350);
     setTimeout(() => setMeldung(null), 1600);
   }
@@ -1143,6 +1168,18 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
     setManuellerWert("");
   }
 
+  function taschenlampeUmschalten() {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const spur = stream.getVideoTracks()[0];
+    if (!spur) return;
+    const neu = !taschenlampeAn;
+    spur
+      .applyConstraints({ advanced: [{ torch: neu }] })
+      .then(() => setTaschenlampeAn(neu))
+      .catch(() => {});
+  }
+
   useEffect(() => {
     laeuftRef.current = true;
     const erfassCanvas = document.createElement("canvas");
@@ -1151,14 +1188,26 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
     async function starten() {
       try {
         const mod = await ladeBarcodeDetector();
-        detectorRef.current = new mod.BarcodeDetector({ formats: ["code_128", "code_39", "ean_13", "itf"] });
+        detectorRef.current = new mod.BarcodeDetector({ formats: ["code_128"] });
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: {
+            facingMode: "environment",
+            width: { ideal: 3840 },
+            height: { ideal: 2160 },
+            advanced: [{ focusMode: "continuous" }],
+          },
         });
         streamRef.current = stream;
         if (!laeuftRef.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
+        }
+        const spur = stream.getVideoTracks()[0];
+        try {
+          const faehigkeiten = spur.getCapabilities ? spur.getCapabilities() : {};
+          if (faehigkeiten.torch) setTaschenlampeVerfuegbar(true);
+        } catch (e) {
+          // Capabilities-API evtl. nicht unterstützt - Taschenlampe einfach ausblenden
         }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -1183,11 +1232,14 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
             const codes = await detectorRef.current.detect(erfassCanvas);
             fehlerFolge = 0;
             if (codes.length > 0) {
-              const wert = (codes[0].rawValue || "").replace(/\D/g, "");
+              // Bei mehreren gleichzeitig sichtbaren Codes (z.B. IMEI1 + IMEI2) den bevorzugen,
+              // der wirklich in der Liste steht, statt blind den ersten erkannten zu nehmen.
+              const werte = codes.map((c) => (c.rawValue || "").replace(/\D/g, "")).filter(Boolean);
+              const treffer = werte.find((w) => einheitenRef.current.some((e) => e.sn === w)) || werte[0];
               const jetzt = Date.now();
-              if (wert && (wert !== letzterRef.current.code || jetzt - letzterRef.current.zeit > 1500)) {
-                letzterRef.current = { code: wert, zeit: jetzt };
-                verarbeiteCode(wert);
+              if (treffer && (treffer !== letzterRef.current.code || jetzt - letzterRef.current.zeit > 1500)) {
+                letzterRef.current = { code: treffer, zeit: jetzt };
+                verarbeiteCode(treffer);
               }
             }
           }
@@ -1205,7 +1257,6 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
     return () => {
       laeuftRef.current = false;
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
-      if (audioCtxRef.current) audioCtxRef.current.close().catch(() => {});
     };
   }, []);
 
@@ -1216,6 +1267,11 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
       <div className="scanner-rahmen">
         <div className="scanner-linie" />
       </div>
+      {taschenlampeVerfuegbar && (
+        <button type="button" className={`scanner-taschenlampe ${taschenlampeAn ? "an" : ""}`} onClick={taschenlampeUmschalten}>
+          {taschenlampeAn ? "☀︎ Licht aus" : "☾ Licht an"}
+        </button>
+      )}
       <form className="scanner-manuell" onSubmit={manuellAbsenden}>
         <input
           type="text"
@@ -1226,11 +1282,34 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
         />
         <button type="submit">Erfassen</button>
       </form>
+      {letzteScans.length > 0 && (
+        <div className="scanner-letzte">
+          {letzteScans.map((s, i) => (
+            <div className="scanner-letzte-zeile" key={s.sn + i}>
+              <span>{s.text}</span>
+              <span>…{s.sn.slice(-4)}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {meldung && <div className={`scanner-treffer ${meldung.art}`}>{meldung.text}</div>}
       {fehler && <div className="scanner-fehlertext">{fehler}</div>}
       <button type="button" className="scanner-schliessen" onClick={onClose}>Fertig</button>
     </div>
   );
+}
+
+function FehlendBarcode({ wert }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current || !window.JsBarcode || !wert) return;
+    try {
+      window.JsBarcode(ref.current, wert, { format: "CODE128", width: 2, height: 34, displayValue: false, margin: 0 });
+    } catch (e) {
+      // Barcode konnte nicht gerendert werden - Zahl bleibt trotzdem als Text sichtbar
+    }
+  }, [wert]);
+  return <svg ref={ref} className="fehlend-barcode" />;
 }
 
 function BestandDruckansicht({ standort, einheiten }) {
@@ -1244,7 +1323,10 @@ function BestandDruckansicht({ standort, einheiten }) {
             <tr key={e.sn} className={e.gefunden ? "" : "fehlend"}>
               <td>{e.gefunden ? "\u2713" : ""}</td>
               <td>{e.name}</td>
-              <td>{e.sn}</td>
+              <td>
+                {e.sn}
+                {!e.gefunden && <FehlendBarcode wert={e.sn} />}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -1280,7 +1362,45 @@ function BestandQr({ sessionId }) {
   );
 }
 
-function BestandAbgleich({ standort, sessionId, einheiten, onScannen, onNeueListe, druckRef }) {
+function HandscannerEingabe({ einheiten, onTreffer }) {
+  const [wert, setWert] = useState("");
+  const [rueckmeldung, setRueckmeldung] = useState(null);
+  const inputRef = useRef(null);
+
+  function absenden(e) {
+    e.preventDefault();
+    const eingabe = wert;
+    setWert("");
+    const ergebnis = bewerteCode(eingabe, einheiten, onTreffer);
+    if (ergebnis) {
+      setRueckmeldung({ text: ergebnis.text, art: ergebnis.art });
+      setTimeout(() => setRueckmeldung(null), 1400);
+    }
+    if (inputRef.current) inputRef.current.focus();
+  }
+
+  return (
+    <Section title="Scanner-Eingabe (PC-Handscanner oder Tastatur)">
+      <p className="upload-hinweis">Feld fokussiert lassen - ein angeschlossener Handscanner "tippt" den Code automatisch hier hinein und sendet Enter.</p>
+      <form className="handscanner-form" onSubmit={absenden}>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          className="handscanner-input"
+          placeholder="Barcode scannen oder IMEI/S-Nummer eingeben…"
+          value={wert}
+          onChange={(e) => setWert(e.target.value)}
+          autoFocus
+        />
+        <button type="submit" className="btn-primaer" style={{ padding: "0 20px" }}>Erfassen</button>
+      </form>
+      {rueckmeldung && <div className={`handscanner-rueckmeldung ${rueckmeldung.art}`}>{rueckmeldung.text}</div>}
+    </Section>
+  );
+}
+
+function BestandAbgleich({ standort, sessionId, einheiten, onScannen, onNeueListe, onTreffer, druckRef }) {
   const [suche, setSuche] = useState("");
   const gefunden = einheiten.filter((e) => e.gefunden).length;
   const gesamt = einheiten.length;
@@ -1310,6 +1430,7 @@ function BestandAbgleich({ standort, sessionId, einheiten, onScannen, onNeueList
           <button type="button" className="btn-sekundaer" onClick={onNeueListe}>Neue Liste</button>
         </div>
       </Section>
+      <HandscannerEingabe einheiten={einheiten} onTreffer={onTreffer} />
       <Section title={`Liste (${gesamt})`}>
         <input
           type="text"
@@ -1419,6 +1540,7 @@ function Bestandsfuehrung({ standort }) {
         einheiten={einheiten}
         onScannen={() => setScannerOffen(true)}
         onNeueListe={neueListe}
+        onTreffer={treffer}
         druckRef={druckRef}
       />
       {fehlerText && <div className="fehler-banner" style={{ margin: "0 16px 16px" }}>{fehlerText}</div>}
