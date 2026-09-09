@@ -200,6 +200,11 @@ main { padding: 4px 16px 24px; flex: 1; }
 
 .scanner-overlay { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; align-items: center; justify-content: center; }
 .scanner-video { width: 100%; height: 100%; object-fit: cover; }
+.scanner-blitz { position: absolute; inset: 0; pointer-events: none; animation: blitz-aus .35s ease-out forwards; }
+.scanner-blitz.gefunden { background: rgba(52,199,123,.35); }
+.scanner-blitz.doppelt { background: rgba(255,255,255,.16); }
+.scanner-blitz.unbekannt { background: rgba(240,101,74,.35); }
+@keyframes blitz-aus { from { opacity: 1; } to { opacity: 0; } }
 .scanner-rahmen { position: absolute; top: 30%; left: 8%; right: 8%; bottom: 40%; border: 2px solid rgba(255,255,255,.75); border-radius: 14px; pointer-events: none; overflow: hidden; }
 .scanner-linie { position: absolute; left: 4%; right: 4%; top: 50%; height: 2px; background: #ff3b30; box-shadow: 0 0 8px 1px rgba(255,59,48,.8); transform: translateY(-50%); }
 .scanner-treffer { position: absolute; bottom: 88px; left: 20px; right: 20px; padding: 12px 16px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600; background: var(--ok); color: #0a1f14; }
@@ -1061,31 +1066,74 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
   const videoRef = useRef(null);
   const [fehler, setFehler] = useState("");
   const [meldung, setMeldung] = useState(null);
+  const [blitz, setBlitz] = useState(null);
   const [manuellerWert, setManuellerWert] = useState("");
   const streamRef = useRef(null);
   const detectorRef = useRef(null);
   const laeuftRef = useRef(true);
   const einheitenRef = useRef(einheiten);
   const letzterRef = useRef({ code: null, zeit: 0 });
+  const audioCtxRef = useRef(null);
 
   useEffect(() => {
     einheitenRef.current = einheiten;
   }, [einheiten]);
 
+  function spieleTon(art) {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      const jetzt = ctx.currentTime;
+      function ton(start, dauer, frequenz) {
+        const osz = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osz.type = "sine";
+        osz.frequency.value = frequenz;
+        gain.gain.setValueAtTime(0.0001, jetzt + start);
+        gain.gain.exponentialRampToValueAtTime(0.22, jetzt + start + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, jetzt + start + dauer);
+        osz.connect(gain);
+        gain.connect(ctx.destination);
+        osz.start(jetzt + start);
+        osz.stop(jetzt + start + dauer + 0.02);
+      }
+      if (art === "gefunden") ton(0, 0.11, 1050);
+      else if (art === "doppelt") ton(0, 0.09, 700);
+      else {
+        ton(0, 0.09, 480);
+        ton(0.12, 0.13, 320);
+      }
+    } catch (e) {
+      // Web Audio evtl. nicht verfügbar/erlaubt - Ton einfach auslassen
+    }
+  }
+
   function verarbeiteCode(rohWert) {
     const wert = (rohWert || "").replace(/\D/g, "");
     if (!wert) return;
     const einheit = einheitenRef.current.find((e) => e.sn === wert);
+    let art;
     if (einheit && !einheit.gefunden) {
+      art = "gefunden";
       onTreffer(wert);
-      setMeldung({ text: einheit.name, art: "gefunden" });
+      setMeldung({ text: einheit.name, art });
       if (navigator.vibrate) navigator.vibrate(80);
     } else if (einheit) {
-      setMeldung({ text: "Bereits erfasst", art: "doppelt" });
+      art = "doppelt";
+      setMeldung({ text: "Bereits erfasst", art });
     } else {
-      setMeldung({ text: `${wert} nicht in der Liste`, art: "unbekannt" });
+      art = "unbekannt";
+      setMeldung({ text: `${wert} nicht in der Liste`, art });
       if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
     }
+    spieleTon(art);
+    setBlitz(art);
+    setTimeout(() => setBlitz(null), 350);
     setTimeout(() => setMeldung(null), 1600);
   }
 
@@ -1157,12 +1205,14 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
     return () => {
       laeuftRef.current = false;
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+      if (audioCtxRef.current) audioCtxRef.current.close().catch(() => {});
     };
   }, []);
 
   return (
     <div className="scanner-overlay">
       <video ref={videoRef} className="scanner-video" playsInline muted />
+      {blitz && <div className={`scanner-blitz ${blitz}`} />}
       <div className="scanner-rahmen">
         <div className="scanner-linie" />
       </div>
