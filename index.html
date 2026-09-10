@@ -241,7 +241,7 @@ main { padding: 4px 16px 24px; flex: 1; }
 .druck-titel-block h1 { font-size: 21px; margin: 0 0 4px; font-weight: 700; }
 .druck-shop { font-size: 11px; color: #444; margin: 0; }
 .druck-zeitstempel { font-size: 10px; color: #666; white-space: nowrap; margin: 2px 0 0; }
-.druck-meta-zeile { font-size: 11px; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 5px 0; margin-bottom: 14px; }
+.druck-meta-zeile { display: flex; justify-content: space-between; font-size: 11px; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 6px 4px; margin-bottom: 14px; }
 .druck-meta-zeile strong { margin-right: 4px; }
 .bestand-druck table.original-format th { text-align: left; padding: 5px 6px; border-bottom: 2px solid #bbb; background: #eef1fa; font-size: 9.5px; text-transform: uppercase; letter-spacing: .02em; }
 .bestand-druck table.original-format td { vertical-align: top; padding: 3px 6px; }
@@ -997,7 +997,14 @@ function parseBestandstext(text) {
   const einheiten = seriennummerArtikel.flatMap((e) =>
     e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, gefunden: false }))
   );
-  return { einheiten, zubehoer: zubehoerArtikel };
+
+  const shopMatch = text.match(/(\d{5,8}).{0,15}?Partner Shop\s+([^\n]+?)(?:\n|$)/i);
+  const loginMatch = text.match(/Login.{0,15}?(\d{6,8})/i);
+  const shopNummer = shopMatch ? shopMatch[1] : "";
+  const shopName = shopMatch ? `o2 Partner Shop ${shopMatch[2].trim()}` : "";
+  const loginKuerzel = loginMatch ? loginMatch[1] : "";
+
+  return { einheiten, zubehoer: zubehoerArtikel, shopNummer, shopName, loginKuerzel };
 }
 
 async function verarbeitePdf(datei, onFortschritt) {
@@ -1024,7 +1031,7 @@ async function verarbeitePdf(datei, onFortschritt) {
   return parseBestandstext(volltext);
 }
 
-async function erstelleBestandsSession(standort, einheiten, zubehoer) {
+async function erstelleBestandsSession(standort, einheiten, zubehoer, kopf) {
   const jetzt = firebase.firestore.Timestamp.now();
   const ablauf = firebase.firestore.Timestamp.fromMillis(Date.now() + AUFBEWAHRUNG_TAGE * 86400000);
   const ref = await db.collection("bestandssessions").add({
@@ -1032,6 +1039,9 @@ async function erstelleBestandsSession(standort, einheiten, zubehoer) {
     standortName: standort.name,
     marke: standort.marke,
     zubehoer: zubehoer || [],
+    shopNummer: (kopf && kopf.shopNummer) || "",
+    shopName: (kopf && kopf.shopName) || "",
+    loginKuerzel: (kopf && kopf.loginKuerzel) || "",
     erstelltVon: auth.currentUser ? auth.currentUser.email : null,
     erstelltAm: jetzt,
     ablaufAm: ablauf,
@@ -1070,14 +1080,14 @@ function BestandUpload({ standort, onFertig }) {
     setStatus("ocr");
     setFehlerText("");
     try {
-      const { einheiten, zubehoer } = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
+      const { einheiten, zubehoer, shopNummer, shopName, loginKuerzel } = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
       if (einheiten.length === 0 && zubehoer.length === 0) {
         setStatus("fehler");
         setFehlerText("Keine Artikel erkannt. PDF prüfen oder erneut versuchen.");
         return;
       }
       setStatus("speichert");
-      const sessionId = await erstelleBestandsSession(standort, einheiten, zubehoer);
+      const sessionId = await erstelleBestandsSession(standort, einheiten, zubehoer, { shopNummer, shopName, loginKuerzel });
       onFertig(sessionId);
     } catch (err) {
       setStatus("fehler");
@@ -1383,21 +1393,23 @@ function gruppiereNachArtikel(einheiten) {
   return [...gruppen.values()];
 }
 
-function BestandDruckansicht({ standort, einheiten, zubehoer }) {
+function BestandDruckansicht({ standort, einheiten, zubehoer, kopf }) {
   const gruppen = gruppiereNachArtikel(einheiten);
   const j = new Date();
   const zeitstempel = `${datumDE(heuteISO())} ${String(j.getHours()).padStart(2, "0")}:${String(j.getMinutes()).padStart(2, "0")}:${String(j.getSeconds()).padStart(2, "0")}`;
+  const shopZeile = kopf && kopf.shopNummer ? `${kopf.shopNummer} - ${kopf.shopName}` : standort.name;
   return (
     <div className="druck-inhalt bestand-druck">
       <div className="druck-kopf">
         <div className="druck-logo">O<sub>2</sub></div>
         <div className="druck-titel-block">
           <h1>Lagerbestände</h1>
-          <p className="druck-shop">{standort.name}</p>
+          <p className="druck-shop">{shopZeile}</p>
         </div>
         <p className="druck-zeitstempel">{zeitstempel}</p>
       </div>
       <div className="druck-meta-zeile">
+        <span><strong>Login-Kürzel</strong> {(kopf && kopf.loginKuerzel) || "\u2014"}</span>
         <span><strong>Lagerart</strong> Kommissionswarenlager</span>
       </div>
       <table className="original-format">
@@ -1601,6 +1613,7 @@ function Bestandsfuehrung({ standort }) {
   const [sessionId, setSessionId] = useState(liesSessionIdAusURL);
   const [sessionStandort, setSessionStandort] = useState(null);
   const [zubehoer, setZubehoer] = useState([]);
+  const [kopf, setKopf] = useState({ shopNummer: "", shopName: "", loginKuerzel: "" });
   const [einheiten, setEinheiten] = useState(null);
   const [scannerOffen, setScannerOffen] = useState(false);
   const [fehlerText, setFehlerText] = useState("");
@@ -1611,6 +1624,7 @@ function Bestandsfuehrung({ standort }) {
       setEinheiten(null);
       setSessionStandort(null);
       setZubehoer([]);
+      setKopf({ shopNummer: "", shopName: "", loginKuerzel: "" });
       return;
     }
     setFehlerText("");
@@ -1625,6 +1639,7 @@ function Bestandsfuehrung({ standort }) {
         const d = doc.data();
         setSessionStandort({ id: d.standortId, name: d.standortName, marke: d.marke });
         setZubehoer(d.zubehoer || []);
+        setKopf({ shopNummer: d.shopNummer || "", shopName: d.shopName || "", loginKuerzel: d.loginKuerzel || "" });
       })
       .catch((err) => aktiv && setFehlerText(speicherfehlertext(err)));
 
@@ -1685,7 +1700,7 @@ function Bestandsfuehrung({ standort }) {
       {fehlerText && <div className="fehler-banner" style={{ margin: "0 16px 16px" }}>{fehlerText}</div>}
       {scannerOffen && <Kamerascanner einheiten={einheiten} onTreffer={treffer} onClose={() => setScannerOffen(false)} />}
       <div className="druckbereich" ref={druckRef}>
-        <BestandDruckansicht standort={sessionStandort} einheiten={einheiten} zubehoer={zubehoer} />
+        <BestandDruckansicht standort={sessionStandort} einheiten={einheiten} zubehoer={zubehoer} kopf={kopf} />
       </div>
     </div>
   );
