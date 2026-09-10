@@ -237,6 +237,7 @@ main { padding: 4px 16px 24px; flex: 1; }
 .bestand-druck table.original-format th { text-align: left; padding: 5px 6px; border-bottom: 2px solid #bbb; background: #eef1fa; font-size: 9.5px; text-transform: uppercase; letter-spacing: .02em; }
 .bestand-druck table.original-format td { vertical-align: top; padding: 3px 6px; }
 .bestand-druck tr.artikel-kopf td { padding-top: 8px; font-weight: 700; border-top: 1px solid #ddd; }
+.bestand-druck tr.zubehoer-titel td { padding-top: 18px; font-weight: 700; font-size: 13px; border-top: 2px solid #999; }
 .bestand-druck tr.sn-ok td, .bestand-druck tr.sn-fehlt td { padding-left: 22px; font-variant-numeric: tabular-nums; color: #333; }
 .bestand-druck tr.sn-ok td { color: #2a8a55; }
 .bestand-druck tr.sn-fehlt td { text-decoration: line-through; color: #b23; }
@@ -932,12 +933,21 @@ const BESTAND_STOPWORTE = new Set([
   "JA", "NEIN", "DEMOS", "SMARTPHONES", "KOMMISSIONSWARENLAGER", "KOMMISSIONSWARENLAG", "LAGERART", "ER",
   "ZEIL", "ZEILE", "ARTIKELGRUPP", "ARTIKELGRUPPE", "SERIENNUMM", "SERIENNUMMER",
   "GEFUHRT", "GEFÜHRT", "MENG", "MENGE", "NUMM", "NUMMER", "NAME", "SEITE", "NR",
+  "HANDSET", "ACCESSORIES", "ARTIKELNUMME", "ARTIKELNAME",
 ]);
 function bereinigeArtikelname(roh) {
   const worte = roh
     .replace(/[\r\n]+/g, " ")
     .split(/\s+/)
-    .filter((w) => w && !BESTAND_STOPWORTE.has(w.toUpperCase().replace(/[^A-ZÄÖÜ]/g, "")) && !/^\d{1,2}$/.test(w));
+    .filter((w) => {
+      if (!w) return false;
+      const norm = w.toUpperCase().replace(/[^A-ZÄÖÜ]/g, "");
+      if (BESTAND_STOPWORTE.has(norm)) return false;
+      if (/^\d{1,2}$/.test(w)) return false;
+      if (/^[A-Za-zÄÖÜäöü]$/.test(w)) return false;
+      if (!/[A-Za-zÄÖÜäöü0-9]/.test(w)) return false;
+      return true;
+    });
   return worte.join(" ").replace(/\s+([,.])/g, "$1").trim();
 }
 
@@ -949,24 +959,36 @@ function parseBestandstext(text) {
     treffer.push({ nummer: m[0], index: m.index, ende: artikelRegex.lastIndex });
   }
 
-  const eintraege = [];
+  const seriennummerArtikel = [];
+  const zubehoerArtikel = [];
   for (let i = 0; i < treffer.length; i++) {
     const block = text.slice(treffer[i].ende, i + 1 < treffer.length ? treffer[i + 1].index : text.length);
-    const snMatch = block.match(/S\s*[\/I]\s*N\s*:?\s*([\d][\d,.\s]{4,})/i);
-    if (!snMatch) continue;
-    const seriennummern = [...new Set(snMatch[1].match(/\d{6,20}/g) || [])];
-    if (seriennummern.length === 0) continue;
     // zweite Ziffer der Artikel-Nummer steht durch den Spaltenumbruch meist am Anfang der nächsten Zeile (z.B. "...-0" + "0")
     const zweiteZiffer = block.match(/^\s*(\d)\b/);
     const nummer = treffer[i].nummer + (zweiteZiffer ? zweiteZiffer[1] : "0");
-    const name = bereinigeArtikelname(block.slice(0, snMatch.index)) || nummer;
     // Zeile-Nummer steht im Original direkt vor der Artikel-Nummer (kleine OCR-Störzeichen dazwischen tolerieren)
     const vorText = text.slice(Math.max(0, treffer[i].index - 10), treffer[i].index);
     const zeileMatch = vorText.match(/(\d{1,3})[^\d]{0,6}$/);
     const zeile = zeileMatch ? zeileMatch[1] : "";
-    eintraege.push({ artikelNummer: nummer, name, zeile, seriennummern });
+
+    const snMatch = block.match(/S\s*[\/I]\s*N\s*:?\s*([\d][\d,.\s]{4,})/i);
+    if (snMatch) {
+      const seriennummern = [...new Set(snMatch[1].match(/\d{6,20}/g) || [])];
+      if (seriennummern.length === 0) continue;
+      const name = bereinigeArtikelname(block.slice(0, snMatch.index)) || nummer;
+      seriennummerArtikel.push({ artikelNummer: nummer, name, zeile, seriennummern });
+    } else {
+      // Zubehör ohne Seriennummer (Seriennummer geführt = NEIN): Menge steht direkt nach "NEIN"
+      const mengeMatch = block.match(/NEIN\s+(\d{1,4})\b/i);
+      if (!mengeMatch) continue;
+      const name = bereinigeArtikelname(block) || nummer;
+      zubehoerArtikel.push({ artikelNummer: nummer, name, zeile, menge: Number(mengeMatch[1]) });
+    }
   }
-  return eintraege.flatMap((e) => e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, gefunden: false })));
+  const einheiten = seriennummerArtikel.flatMap((e) =>
+    e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, gefunden: false }))
+  );
+  return { einheiten, zubehoer: zubehoerArtikel };
 }
 
 async function verarbeitePdf(datei, onFortschritt) {
@@ -993,13 +1015,14 @@ async function verarbeitePdf(datei, onFortschritt) {
   return parseBestandstext(volltext);
 }
 
-async function erstelleBestandsSession(standort, einheiten) {
+async function erstelleBestandsSession(standort, einheiten, zubehoer) {
   const jetzt = firebase.firestore.Timestamp.now();
   const ablauf = firebase.firestore.Timestamp.fromMillis(Date.now() + AUFBEWAHRUNG_TAGE * 86400000);
   const ref = await db.collection("bestandssessions").add({
     standortId: standort.id,
     standortName: standort.name,
     marke: standort.marke,
+    zubehoer: zubehoer || [],
     erstelltVon: auth.currentUser ? auth.currentUser.email : null,
     erstelltAm: jetzt,
     ablaufAm: ablauf,
@@ -1038,14 +1061,14 @@ function BestandUpload({ standort, onFertig }) {
     setStatus("ocr");
     setFehlerText("");
     try {
-      const einheiten = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
-      if (einheiten.length === 0) {
+      const { einheiten, zubehoer } = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
+      if (einheiten.length === 0 && zubehoer.length === 0) {
         setStatus("fehler");
-        setFehlerText("Keine Seriennummern erkannt. PDF prüfen oder erneut versuchen.");
+        setFehlerText("Keine Artikel erkannt. PDF prüfen oder erneut versuchen.");
         return;
       }
       setStatus("speichert");
-      const sessionId = await erstelleBestandsSession(standort, einheiten);
+      const sessionId = await erstelleBestandsSession(standort, einheiten, zubehoer);
       onFertig(sessionId);
     } catch (err) {
       setStatus("fehler");
@@ -1351,7 +1374,7 @@ function gruppiereNachArtikel(einheiten) {
   return [...gruppen.values()];
 }
 
-function BestandDruckansicht({ standort, einheiten }) {
+function BestandDruckansicht({ standort, einheiten, zubehoer }) {
   const gruppen = gruppiereNachArtikel(einheiten);
   return (
     <div className="druck-inhalt bestand-druck">
@@ -1390,6 +1413,23 @@ function BestandDruckansicht({ standort, einheiten }) {
               ))}
             </React.Fragment>
           ))}
+          {zubehoer && zubehoer.length > 0 && (
+            <>
+              <tr className="zubehoer-titel">
+                <td colSpan={6}>Zubehör (ohne Seriennummer)</td>
+              </tr>
+              {zubehoer.map((z) => (
+                <tr key={z.artikelNummer} className="artikel-kopf">
+                  <td>{z.zeile}</td>
+                  <td>{z.artikelNummer}</td>
+                  <td>{z.name}</td>
+                  <td>NEIN</td>
+                  <td>{z.menge}</td>
+                  <td>Kommissionswarenlager</td>
+                </tr>
+              ))}
+            </>
+          )}
         </tbody>
       </table>
     </div>
@@ -1461,7 +1501,7 @@ function HandscannerEingabe({ einheiten, onTreffer }) {
   );
 }
 
-function BestandAbgleich({ standort, sessionId, einheiten, onScannen, onNeueListe, onTreffer, druckRef }) {
+function BestandAbgleich({ standort, sessionId, einheiten, zubehoer, onScannen, onNeueListe, onTreffer, druckRef }) {
   const [suche, setSuche] = useState("");
   const gefunden = einheiten.filter((e) => e.gefunden).length;
   const gesamt = einheiten.length;
@@ -1511,6 +1551,19 @@ function BestandAbgleich({ standort, sessionId, einheiten, onScannen, onNeueList
         </ul>
         {sucheNorm && gefiltert.length === 0 && <p className="historie-status">Keine Treffer.</p>}
       </Section>
+      {zubehoer && zubehoer.length > 0 && (
+        <Section title={`Zubehör ohne Seriennummer (${zubehoer.length})`}>
+          <ul className="abgleich-liste">
+            {zubehoer.map((z) => (
+              <li key={z.artikelNummer}>
+                <span className="abgleich-status"></span>
+                <span className="abgleich-name">{z.name}</span>
+                <span className="abgleich-sn">× {z.menge}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
       <div className="aktionen">
         <button type="button" className="btn-sekundaer" onClick={() => window.print()}>Drucken</button>
         <button type="button" className="btn-primaer" onClick={() => erstellePdf(druckRef.current, `Bestandsabgleich_${standort.id}_${heuteISO()}`)}>Als PDF speichern</button>
@@ -1526,6 +1579,7 @@ function liesSessionIdAusURL() {
 function Bestandsfuehrung({ standort }) {
   const [sessionId, setSessionId] = useState(liesSessionIdAusURL);
   const [sessionStandort, setSessionStandort] = useState(null);
+  const [zubehoer, setZubehoer] = useState([]);
   const [einheiten, setEinheiten] = useState(null);
   const [scannerOffen, setScannerOffen] = useState(false);
   const [fehlerText, setFehlerText] = useState("");
@@ -1535,6 +1589,7 @@ function Bestandsfuehrung({ standort }) {
     if (!sessionId) {
       setEinheiten(null);
       setSessionStandort(null);
+      setZubehoer([]);
       return;
     }
     setFehlerText("");
@@ -1548,6 +1603,7 @@ function Bestandsfuehrung({ standort }) {
         }
         const d = doc.data();
         setSessionStandort({ id: d.standortId, name: d.standortName, marke: d.marke });
+        setZubehoer(d.zubehoer || []);
       })
       .catch((err) => aktiv && setFehlerText(speicherfehlertext(err)));
 
@@ -1599,6 +1655,7 @@ function Bestandsfuehrung({ standort }) {
         standort={sessionStandort}
         sessionId={sessionId}
         einheiten={einheiten}
+        zubehoer={zubehoer}
         onScannen={() => setScannerOffen(true)}
         onNeueListe={neueListe}
         onTreffer={treffer}
@@ -1607,7 +1664,7 @@ function Bestandsfuehrung({ standort }) {
       {fehlerText && <div className="fehler-banner" style={{ margin: "0 16px 16px" }}>{fehlerText}</div>}
       {scannerOffen && <Kamerascanner einheiten={einheiten} onTreffer={treffer} onClose={() => setScannerOffen(false)} />}
       <div className="druckbereich" ref={druckRef}>
-        <BestandDruckansicht standort={sessionStandort} einheiten={einheiten} />
+        <BestandDruckansicht standort={sessionStandort} einheiten={einheiten} zubehoer={zubehoer} />
       </div>
     </div>
   );
