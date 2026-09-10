@@ -1012,6 +1012,7 @@ async function verarbeitePdf(datei, onFortschritt) {
   const arrayBuffer = await datei.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const worker = await TesseractMod.default.createWorker("eng");
+  await worker.setParameters({ tessedit_pageseg_mode: "6" });
   let volltext = "";
   try {
     for (let i = 1; i <= pdf.numPages; i++) {
