@@ -234,6 +234,15 @@ main { padding: 4px 16px 24px; flex: 1; }
 .qr-hinweis { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 300px; }
 
 .bestand-druck table.original-format { width: 100%; border-collapse: collapse; font-size: 11px; }
+.druck-kopf { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 16px; margin-bottom: 6px; }
+.druck-logo { font-size: 38px; font-weight: 800; color: #0019a5; line-height: 1; font-family: Arial, Helvetica, sans-serif; }
+.druck-logo sub { font-size: 17px; font-weight: 800; bottom: -2px; }
+.druck-titel-block { text-align: center; }
+.druck-titel-block h1 { font-size: 21px; margin: 0 0 4px; font-weight: 700; }
+.druck-shop { font-size: 11px; color: #444; margin: 0; }
+.druck-zeitstempel { font-size: 10px; color: #666; white-space: nowrap; margin: 2px 0 0; }
+.druck-meta-zeile { font-size: 11px; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 5px 0; margin-bottom: 14px; }
+.druck-meta-zeile strong { margin-right: 4px; }
 .bestand-druck table.original-format th { text-align: left; padding: 5px 6px; border-bottom: 2px solid #bbb; background: #eef1fa; font-size: 9.5px; text-transform: uppercase; letter-spacing: .02em; }
 .bestand-druck table.original-format td { vertical-align: top; padding: 3px 6px; }
 .bestand-druck tr.artikel-kopf td { padding-top: 8px; font-weight: 700; border-top: 1px solid #ddd; }
@@ -1376,10 +1385,21 @@ function gruppiereNachArtikel(einheiten) {
 
 function BestandDruckansicht({ standort, einheiten, zubehoer }) {
   const gruppen = gruppiereNachArtikel(einheiten);
+  const j = new Date();
+  const zeitstempel = `${datumDE(heuteISO())} ${String(j.getHours()).padStart(2, "0")}:${String(j.getMinutes()).padStart(2, "0")}:${String(j.getSeconds()).padStart(2, "0")}`;
   return (
     <div className="druck-inhalt bestand-druck">
-      <h1>Bestandsabgleich</h1>
-      <p>{standort.name} · {datumDE(heuteISO())}</p>
+      <div className="druck-kopf">
+        <div className="druck-logo">O<sub>2</sub></div>
+        <div className="druck-titel-block">
+          <h1>Lagerbestände</h1>
+          <p className="druck-shop">{standort.name}</p>
+        </div>
+        <p className="druck-zeitstempel">{zeitstempel}</p>
+      </div>
+      <div className="druck-meta-zeile">
+        <span><strong>Lagerart</strong> Kommissionswarenlager</span>
+      </div>
       <table className="original-format">
         <thead>
           <tr>
@@ -1388,6 +1408,7 @@ function BestandDruckansicht({ standort, einheiten, zubehoer }) {
             <th>Artikel-Name</th>
             <th>Seriennummer geführt</th>
             <th>Menge</th>
+
             <th>Lagerart</th>
           </tr>
         </thead>
