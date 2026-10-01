@@ -236,31 +236,62 @@ main { padding: 4px 16px 24px; flex: 1; }
 .qr-code { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
 .qr-hinweis { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 300px; }
 
-.bestand-druck table.original-format { width: 100%; border-collapse: collapse; font-size: 11px; }
-.druck-kopf { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 16px; margin-bottom: 6px; }
-.druck-logo { font-size: 38px; font-weight: 800; color: #0019a5; line-height: 1; font-family: Arial, Helvetica, sans-serif; }
-.druck-logo sub { font-size: 17px; font-weight: 800; bottom: -2px; }
+/* Bestandsdruck: Maße und Typografie des o2-Originalexports. */
+.bestand-druck { padding: 18px 72px 18px 73px; width: 850px; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; color: #000; }
+.druck-original-kopf { display: block; width: 100%; height: auto; }
+.druck-kopf { position: relative; height: 116px; border: 1px solid #d4d4d4; border-bottom: 0; }
+.druck-logo { position: absolute; left: 17px; top: 17px; width: 74px; height: 74px; }
 .druck-titel-block { text-align: center; }
-.druck-titel-block h1 { font-size: 21px; margin: 0 0 4px; font-weight: 700; }
-.druck-shop { font-size: 11px; color: #444; margin: 0; }
-.druck-zeitstempel { font-size: 10px; color: #666; white-space: nowrap; margin: 2px 0 0; }
-.druck-meta-zeile { display: flex; justify-content: space-between; font-size: 11px; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 6px 4px; margin-bottom: 14px; }
-.druck-meta-zeile strong { margin-right: 4px; }
-.bestand-druck table.original-format th { text-align: left; padding: 5px 6px; border-bottom: 2px solid #bbb; background: #eef1fa; font-size: 9.5px; text-transform: uppercase; letter-spacing: .02em; }
-.bestand-druck table.original-format td { vertical-align: top; padding: 3px 6px; }
-.bestand-druck tr.artikel-kopf td { padding-top: 8px; font-weight: 700; border-top: 1px solid #ddd; }
-.bestand-druck tr.zubehoer-titel td { padding-top: 18px; font-weight: 700; font-size: 13px; border-top: 2px solid #999; }
-.bestand-druck tr.sn-ok td, .bestand-druck tr.sn-fehlt td { padding-left: 22px; font-variant-numeric: tabular-nums; color: #333; }
-.bestand-druck tr.sn-ok td { color: #2a8a55; }
-.bestand-druck tr.sn-fehlt td { text-decoration: line-through; color: #b23; }
-.fehlend-barcode { display: block; margin: 3px 0 4px; height: 34px; text-decoration: none; }
+.bestand-druck .druck-titel-block h1 { position: absolute; top: 12px; left: 0; width: 100%; font-size: 27px; line-height: 33px; margin: 0; font-weight: 700; }
+.druck-shop { position: absolute; top: 61px; left: 95px; right: 95px; font-size: 13px; line-height: 16px; margin: 0; color: #000; }
+.druck-zeitstempel { position: absolute; right: 20px; top: 43px; font-size: 13px; line-height: 16px; margin: 0; color: #000; white-space: nowrap; }
+.druck-meta-zeile { height: 51px; padding: 10px 7px 14px; display: flex; gap: 29px; border-left: 1px solid #d4d4d4; border-right: 1px solid #d4d4d4; box-sizing: border-box; font-size: 13px; }
+.druck-meta-zeile span { flex: 1; padding: 3px 11px 8px; border-bottom: 1px solid #d4d4d4; white-space: nowrap; }
+.druck-meta-zeile strong { margin-right: 12px; }
+.druck-meta-zeile span:last-child strong { margin-right: 66px; }
+.bestand-druck table.original-format { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 15px; margin: 0; border: 1px solid #d4d4d4; border-top: 0; }
+.bestand-druck table.original-format th { text-align: left; vertical-align: top; padding: 14px 8px 8px; height: 52px; box-sizing: border-box; border-bottom: 1px solid #d4d4d4; background: #f2f5ff; font-size: 13px; text-transform: none; letter-spacing: 0; overflow-wrap: anywhere; }
+.bestand-druck table.original-format td { vertical-align: top; padding: 14px 8px; border-bottom: 0; overflow-wrap: anywhere; }
+.bestand-druck tr.artikel-kopf td { font-weight: 400; border-top: 1px solid #d4d4d4; }
+.bestand-druck tr.sn-zeile td { padding: 7px 8px 8px; border-bottom: 1px solid #d4d4d4; }
+.bestand-druck .sn-ok { color: #2a8a55; }
+.bestand-druck .sn-fehlt { color: #b23; text-decoration: line-through; }
+.bestand-druck .sn-neutral { color: #000; text-decoration: none; }
+.bestand-druck .sn-eintrag { display: inline-block; margin-right: 5px; }
+.fehlend-barcode { display: block; margin: 3px 0 4px; height: 34px; max-width: 100%; text-decoration: none; }
 @media print {
   body * { visibility: hidden; }
   .bestand-druck, .bestand-druck * { visibility: visible; }
   .druckbereich { position: static !important; left: 0 !important; width: auto !important; }
-  .bestand-druck { position: absolute; top: 0; left: 0; width: 100%; padding: 16px; }
+  .bestand-druck { position: absolute; top: 0; left: 0; width: 850px; padding: 18px 72px 18px 73px; }
   .bestand-druck tr { break-inside: avoid; page-break-inside: avoid; }
 }
+
+/* Shop-Einstieg und Druckauswahl */
+.shop-start { max-width: 840px; margin: 0 auto; padding: 44px 24px; }
+.shop-start header { text-align: center; margin-bottom: 30px; }
+.shop-start h1 { font-size: 30px; margin: 0 0 10px; }
+.shop-start p { color: #bdc2cf; margin: 0; }
+.shop-raster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.shop-kachel { min-height: 224px; border: 2px solid transparent; border-radius: 24px; background: #fff; color: #10121a; padding: 30px 18px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; cursor: pointer; box-shadow: 0 14px 30px #0002; font-family: inherit; transition: transform .15s, box-shadow .15s; }
+.shop-kachel:hover { transform: translateY(-3px); box-shadow: 0 18px 35px #0004; }
+.shop-kachel:focus-visible { outline: 3px solid #69a9ff; outline-offset: 4px; }
+.shop-kachel strong { font-size: 18px; line-height: 1.35; }
+.shop-symbol { background: #0019a5; width: 62px; height: 62px; display: grid; place-items: center; border-radius: 18px; font-size: 27px; }
+.shop-marke { background: #0019a5; color: #fff; font-size: 13px; font-weight: 700; padding: 4px 13px; border-radius: 20px; }
+.shop-kachel.telekom .shop-symbol, .shop-kachel.telekom .shop-marke { background: #e20074; }
+.shop-start-aktionen { display: flex; justify-content: center; gap: 12px; margin-top: 26px; }
+.shop-wechsel { cursor: pointer; text-align: left; font-family: inherit; }
+.druck-optionen { border: 1px solid var(--border); border-radius: 20px; background: var(--surface, #22242d); color: var(--text, #fff); width: min(440px, calc(100% - 32px)); padding: 26px; }
+.druck-optionen::backdrop { background: #000a; }
+.druck-optionen h2 { margin: 0 0 12px; font-size: 21px; }
+.druck-optionen p { font-size: 14px; line-height: 1.5; }
+.druck-optionen .option-knopf { width: 100%; margin-top: 10px; min-height: 46px; }
+.druckbereich:not([data-postpaid-barcodes="ja"]) .postpaid-barcode { display: none !important; }
+@media (max-width: 650px) { .shop-raster { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; } .shop-start { padding: 28px 16px; } .shop-kachel { min-height: 200px; padding: 22px 12px; } }
+@media (max-width: 360px) { .shop-raster { grid-template-columns: 1fr; } }
+@media print { .shop-start, .druck-optionen { display: none !important; } }
+
 </style>
 </head>
 <body>
@@ -399,6 +430,8 @@ function komprimiereBild(datei) {
 }
 
 async function erstellePdf(element, dateiname) {
+  await Promise.all(Array.from(element.querySelectorAll("img")).map(img => img.decode ? img.decode().catch(() => {}) : Promise.resolve()));
+  const istBestand = !!element.querySelector(".bestand-druck");
   const scale = 2;
   const containerOben = element.getBoundingClientRect().top;
   // Grenzen aller Tabellenzeilen merken (in CSS-Pixel relativ zum Element), damit der Seitenschnitt
@@ -409,9 +442,9 @@ async function erstellePdf(element, dateiname) {
 
   const canvas = await html2canvas(element, { scale, backgroundColor: "#ffffff", useCORS: true });
   const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF("p", "mm", "a4");
-  const seitenBreiteMm = 210;
-  const seitenHoeheMm = 297;
+  const pdf = new jsPDF("p", "mm", istBestand ? "letter" : "a4");
+  const seitenBreiteMm = pdf.internal.pageSize.getWidth();
+  const seitenHoeheMm = pdf.internal.pageSize.getHeight();
   const seitenHoehePx = (seitenHoeheMm * canvas.width) / seitenBreiteMm;
 
   let versatzPx = 0;
@@ -419,19 +452,19 @@ async function erstellePdf(element, dateiname) {
   while (versatzPx < canvas.height - 2) {
     const maxEndePx = Math.min(versatzPx + seitenHoehePx, canvas.height);
     const passendeGrenze = [...zeilenGrenzenPx].reverse().find((g) => g > versatzPx + 5 && g <= maxEndePx);
-    const schnittPx = passendeGrenze || maxEndePx;
+    const schnittPx = maxEndePx >= canvas.height ? canvas.height : (passendeGrenze || maxEndePx);
     const hoehePx = Math.max(1, Math.round(schnittPx - versatzPx));
 
     const seiteCanvas = document.createElement("canvas");
     seiteCanvas.width = canvas.width;
     seiteCanvas.height = hoehePx;
     seiteCanvas.getContext("2d").drawImage(canvas, 0, -Math.round(versatzPx));
-    const seiteBild = seiteCanvas.toDataURL("image/jpeg", 0.85);
+    const seiteBild = istBestand ? seiteCanvas.toDataURL("image/png") : seiteCanvas.toDataURL("image/jpeg", 0.85);
 
     if (!ersteSeite) pdf.addPage();
     ersteSeite = false;
     const hoeheMm = (hoehePx * seitenBreiteMm) / canvas.width;
-    pdf.addImage(seiteBild, "JPEG", 0, 0, seitenBreiteMm, hoeheMm);
+    pdf.addImage(seiteBild, istBestand ? "PNG" : "JPEG", 0, 0, seitenBreiteMm, hoeheMm);
 
     versatzPx += hoehePx;
   }
@@ -1034,7 +1067,7 @@ const BESTAND_STOPWORTE = new Set([
   "JA", "NEIN", "DEMOS", "SMARTPHONES", "KOMMISSIONSWARENLAGER", "KOMMISSIONSWARENLAG", "LAGERART", "ER",
   "ZEIL", "ZEILE", "ARTIKELGRUPP", "ARTIKELGRUPPE", "SERIENNUMM", "SERIENNUMMER",
   "GEFUHRT", "GEFÜHRT", "MENG", "MENGE", "NUMM", "NUMMER", "NAME", "SEITE", "NR",
-  "HANDSET", "ACCESSORIES", "ARTIKELNUMME", "ARTIKELNAME",
+  "HANDSET", "ACCESSORIES", "BONUSPROGRAMM", "ROUTER", "ARTIKELNUMME", "ARTIKELNAME",
 ]);
 function bereinigeArtikelname(roh) {
   const worte = roh
@@ -1072,22 +1105,24 @@ function parseBestandstext(text) {
     const zeileMatch = vorText.match(/(\d{1,3})[^\d]{0,6}$/);
     const zeile = zeileMatch ? zeileMatch[1] : "";
 
+    const gruppeMatch = block.match(/Bonusprogramm|Demos|Smartphones|Router|Handset|Accessories/i);
+    const artikelGruppe = gruppeMatch ? gruppeMatch[0] : "";
     const snMatch = block.match(/S\s*[\/I]\s*N\s*:?\s*([\d][\d,.\s]{4,})/i);
     if (snMatch) {
       const seriennummern = [...new Set(snMatch[1].match(/\d{6,20}/g) || [])];
       if (seriennummern.length === 0) continue;
       const name = bereinigeArtikelname(block.slice(0, snMatch.index)) || nummer;
-      seriennummerArtikel.push({ artikelNummer: nummer, name, zeile, seriennummern });
+      seriennummerArtikel.push({ artikelNummer: nummer, name, zeile, artikelGruppe, seriennummern });
     } else {
       // Zubehör ohne Seriennummer (Seriennummer geführt = NEIN): Menge steht direkt nach "NEIN"
       const mengeMatch = block.match(/NEIN\s+(\d{1,4})\b/i);
       if (!mengeMatch) continue;
       const name = bereinigeArtikelname(block) || nummer;
-      zubehoerArtikel.push({ artikelNummer: nummer, name, zeile, menge: Number(mengeMatch[1]) });
+      zubehoerArtikel.push({ artikelNummer: nummer, name, zeile, artikelGruppe, menge: Number(mengeMatch[1]) });
     }
   }
   const einheiten = seriennummerArtikel.flatMap((e) =>
-    e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, gefunden: false }))
+    e.seriennummern.map((sn) => ({ sn, artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, artikelGruppe: e.artikelGruppe, gefunden: false }))
   );
 
   const shopMatch = text.match(/(\d{5,8}).{0,15}?Partner Shop\s+([^\n]+?)(?:\n|$)/i);
@@ -1099,6 +1134,38 @@ function parseBestandstext(text) {
   return { einheiten, zubehoer: zubehoerArtikel, shopNummer, shopName, loginKuerzel };
 }
 
+// Find the pale blue table heading; retain everything above it verbatim.
+function originalKopfAusCanvas(canvas) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const pixels = ctx.getImageData(0, 0, w, Math.ceil(h * .32)).data;
+  let bandY = -1, links = 0, rechts = w;
+  for (let y = Math.floor(h * .08); y < Math.floor(h * .30); y++) {
+    let count = 0, first = -1, last = 0;
+    for (let x = 0; x < w; x++) {
+      const k = (y * w + x) * 4, r = pixels[k], g = pixels[k+1], b = pixels[k+2];
+      if (r >= 235 && r <= 248 && g >= 235 && g <= 250 && b >= 252 && b-r >= 7) {
+        count++; if (first < 0) first = x; last = x;
+      }
+    }
+    if (count > w * .55) { bandY = y; links = Math.max(0, first-2); rechts = Math.min(w, last+2); break; }
+  }
+  if (bandY < 0) return ""; // Different export: use the editable fallback header.
+  let oben = 0;
+  outer: for (let y = 0; y < bandY; y++) {
+    let count = 0;
+    for (let x = links; x < rechts; x++) {
+      const k = (y*w+x)*4;
+      if (pixels[k] < 235 && pixels[k+1] < 235 && pixels[k+2] < 235) count++;
+    }
+    if (count > (rechts-links)*.6) { oben = y; break outer; }
+  }
+  const crop = document.createElement("canvas");
+  crop.width = rechts-links; crop.height = bandY-oben;
+  crop.getContext("2d").drawImage(canvas, links, oben, crop.width, crop.height, 0, 0, crop.width, crop.height);
+  return crop.toDataURL("image/png");
+}
+
 async function verarbeitePdf(datei, onFortschritt) {
   const [pdfjsLib, TesseractMod] = await Promise.all([ladePdfJs(), ladeTesseract()]);
   const arrayBuffer = await datei.arrayBuffer();
@@ -1106,6 +1173,7 @@ async function verarbeitePdf(datei, onFortschritt) {
   const worker = await TesseractMod.default.createWorker("eng");
   await worker.setParameters({ tessedit_pageseg_mode: "6" });
   let volltext = "";
+  let originalKopf = "";
   try {
     for (let i = 1; i <= pdf.numPages; i++) {
       onFortschritt(i, pdf.numPages);
@@ -1115,13 +1183,14 @@ async function verarbeitePdf(datei, onFortschritt) {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await seite.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+      if (i === 1) originalKopf = originalKopfAusCanvas(canvas);
       const { data } = await worker.recognize(canvas);
       volltext += "\n" + data.text;
     }
   } finally {
     await worker.terminate();
   }
-  return parseBestandstext(volltext);
+  return { ...parseBestandstext(volltext), originalKopf };
 }
 
 async function erstelleBestandsSession(standort, einheiten, zubehoer, kopf) {
@@ -1132,6 +1201,7 @@ async function erstelleBestandsSession(standort, einheiten, zubehoer, kopf) {
     standortName: standort.name,
     marke: standort.marke,
     zubehoer: zubehoer || [],
+    originalKopf: (kopf && kopf.originalKopf) || "",
     shopNummer: (kopf && kopf.shopNummer) || "",
     shopName: (kopf && kopf.shopName) || "",
     loginKuerzel: (kopf && kopf.loginKuerzel) || "",
@@ -1142,7 +1212,7 @@ async function erstelleBestandsSession(standort, einheiten, zubehoer, kopf) {
   for (let i = 0; i < einheiten.length; i += 450) {
     const batch = db.batch();
     for (const e of einheiten.slice(i, i + 450)) {
-      batch.set(ref.collection("einheiten").doc(e.sn), { artikelNummer: e.artikelNummer, name: e.name, gefunden: false });
+      batch.set(ref.collection("einheiten").doc(e.sn), { artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile || "", artikelGruppe: e.artikelGruppe || "", gefunden: false });
     }
     await batch.commit();
   }
@@ -1173,14 +1243,14 @@ function BestandUpload({ standort, onFertig }) {
     setStatus("ocr");
     setFehlerText("");
     try {
-      const { einheiten, zubehoer, shopNummer, shopName, loginKuerzel } = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
+      const { einheiten, zubehoer, shopNummer, shopName, loginKuerzel, originalKopf } = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
       if (einheiten.length === 0 && zubehoer.length === 0) {
         setStatus("fehler");
         setFehlerText("Keine Artikel erkannt. PDF prüfen oder erneut versuchen.");
         return;
       }
       setStatus("speichert");
-      const sessionId = await erstelleBestandsSession(standort, einheiten, zubehoer, { shopNummer, shopName, loginKuerzel });
+      const sessionId = await erstelleBestandsSession(standort, einheiten, zubehoer, { shopNummer, shopName, loginKuerzel, originalKopf });
       onFertig(sessionId);
     } catch (err) {
       setStatus("fehler");
@@ -1462,7 +1532,14 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
   );
 }
 
-function FehlendBarcode({ wert }) {
+function istPostpaidSimone(artikel) {
+  const nummer = String(artikel.artikelNummer || "").replace(/[^0-9]/g, "");
+  if (nummer) return nummer === "461230002100";
+  const name = String(artikel.name || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return /^POSTPAIDV[5S][0O]NESIMSIMONEWL125HSONL[Y]?$/.test(name);
+}
+
+function FehlendBarcode({ wert, postpaid = false }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!ref.current || !window.JsBarcode || !wert) return;
@@ -1472,18 +1549,18 @@ function FehlendBarcode({ wert }) {
       // Barcode konnte nicht gerendert werden - Zahl bleibt trotzdem als Text sichtbar
     }
   }, [wert]);
-  return <svg ref={ref} className="fehlend-barcode" />;
+  return <svg ref={ref} className={`fehlend-barcode${postpaid ? " postpaid-barcode" : ""}`} />;
 }
 
 function gruppiereNachArtikel(einheiten) {
   const gruppen = new Map();
   for (const e of einheiten) {
     if (!gruppen.has(e.artikelNummer)) {
-      gruppen.set(e.artikelNummer, { artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, einheiten: [] });
+      gruppen.set(e.artikelNummer, { artikelNummer: e.artikelNummer, name: e.name, zeile: e.zeile, artikelGruppe: e.artikelGruppe || "", einheiten: [] });
     }
     gruppen.get(e.artikelNummer).einheiten.push(e);
   }
-  return [...gruppen.values()];
+  return [...gruppen.values()].sort((a,b) => (Number(a.zeile) || 99999) - (Number(b.zeile) || 99999));
 }
 
 function BestandDruckansicht({ standort, einheiten, zubehoer, kopf }) {
@@ -1493,8 +1570,9 @@ function BestandDruckansicht({ standort, einheiten, zubehoer, kopf }) {
   const shopZeile = kopf && kopf.shopNummer ? `${kopf.shopNummer} - ${kopf.shopName}` : standort.name;
   return (
     <div className="druck-inhalt bestand-druck">
+      {kopf && kopf.originalKopf ? <img className="druck-original-kopf" src={kopf.originalKopf} alt="Originalkopf Lagerbestände" /> : <>
       <div className="druck-kopf">
-        <div className="druck-logo">O<sub>2</sub></div>
+        <img className="druck-logo" src="data:image/png;base64,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" alt="o2" />
         <div className="druck-titel-block">
           <h1>Lagerbestände</h1>
           <p className="druck-shop">{shopZeile}</p>
@@ -1505,12 +1583,15 @@ function BestandDruckansicht({ standort, einheiten, zubehoer, kopf }) {
         <span><strong>Login-Kürzel</strong> {(kopf && kopf.loginKuerzel) || "\u2014"}</span>
         <span><strong>Lagerart</strong> Kommissionswarenlager</span>
       </div>
+      </>}
       <table className="original-format">
+        <colgroup>{[6,15,24,14,13.5,7.5,20].map((breite,i) => <col key={i} style={{width: `${breite}%`}} />)}</colgroup>
         <thead>
           <tr>
             <th>Zeile</th>
             <th>Artikel-Nummer</th>
             <th>Artikel-Name</th>
+            <th>Artikel-Gruppe</th>
             <th>Seriennummer geführt</th>
             <th>Menge</th>
 
@@ -1524,31 +1605,26 @@ function BestandDruckansicht({ standort, einheiten, zubehoer, kopf }) {
                 <td>{g.zeile}</td>
                 <td>{g.artikelNummer}</td>
                 <td>{g.name}</td>
+                <td>{g.artikelGruppe}</td>
                 <td>JA</td>
                 <td>{g.einheiten.length}</td>
                 <td>Kommissionswarenlager</td>
               </tr>
-              {g.einheiten.map((e) => (
-                <tr key={e.sn} className={e.gefunden ? "sn-ok" : "sn-fehlt"}>
-                  <td colSpan={3}></td>
-                  <td colSpan={3}>
-                    {e.gefunden ? "\u2713" : "\u2717"} S/N: {e.sn}
-                    {!e.gefunden && <FehlendBarcode wert={e.sn} />}
-                  </td>
-                </tr>
-              ))}
+              <tr className="sn-zeile"><td colSpan={7}>S/N: {g.einheiten.map((e) => (
+                <span key={e.sn} className={`sn-eintrag ${e.gefunden ? "sn-ok" : istPostpaidSimone(g) ? "sn-neutral" : "sn-fehlt"}`}>
+                  {e.gefunden ? "✓ " : istPostpaidSimone(g) ? "" : "✗ "}{e.sn}{!e.gefunden && <FehlendBarcode wert={e.sn} postpaid={istPostpaidSimone(g)} />}
+                </span>
+              ))}</td></tr>
             </React.Fragment>
           ))}
           {zubehoer && zubehoer.length > 0 && (
             <>
-              <tr className="zubehoer-titel">
-                <td colSpan={6}>Zubehör (ohne Seriennummer)</td>
-              </tr>
               {zubehoer.map((z) => (
                 <tr key={z.artikelNummer} className="artikel-kopf">
                   <td>{z.zeile}</td>
                   <td>{z.artikelNummer}</td>
                   <td>{z.name}</td>
+                  <td>{z.artikelGruppe || ""}</td>
                   <td>NEIN</td>
                   <td>{z.menge}</td>
                   <td>Kommissionswarenlager</td>
@@ -1627,7 +1703,51 @@ function HandscannerEingabe({ einheiten, onTreffer }) {
   );
 }
 
+function DruckOptionen({ modus, beschaeftigt, onAuswahl, onAbbrechen }) {
+  const ref = useRef(null);
+  useEffect(() => { ref.current.showModal(); }, []);
+  return <dialog ref={ref} className="druck-optionen" aria-labelledby="druck-frage" onCancel={(e) => { e.preventDefault(); if (!beschaeftigt) onAbbrechen(); }}>
+    <h2 id="druck-frage">Postpaid-Barcodes mitdrucken?</h2>
+    <p><strong>4612-300021-00</strong><br />POSTPAID V50NE SIM SIMONE -WL 125 HS ONLY</p>
+    <p>Sollen die Barcodes der nicht gescannten Karten dieses Artikels mitgedruckt werden? Die Seriennummern bleiben als Text erhalten.</p>
+    <button autoFocus type="button" className="btn-primaer option-knopf" disabled={beschaeftigt} onClick={() => onAuswahl(false)}>Ohne Postpaid-Barcodes</button>
+    <button type="button" className="btn-sekundaer option-knopf" disabled={beschaeftigt} onClick={() => onAuswahl(true)}>Mit Postpaid-Barcodes</button>
+    <button type="button" className="btn-sekundaer option-knopf" disabled={beschaeftigt} onClick={onAbbrechen}>Abbrechen</button>
+    {beschaeftigt && <p role="status">{modus === "pdf" ? "PDF wird erstellt …" : "Druck wird vorbereitet …"}</p>}
+  </dialog>;
+}
+
 function BestandAbgleich({ standort, sessionId, einheiten, zubehoer, onScannen, onNeueListe, onTreffer, druckRef }) {
+  const [druckModus, setDruckModus] = useState(null);
+  const [exportLaeuft, setExportLaeuft] = useState(false);
+  const [exportFehler, setExportFehler] = useState("");
+  const exportSperre = useRef(false);
+  async function ausgeben(mitBarcodes) {
+    if (exportSperre.current || !druckRef.current) return;
+    exportSperre.current = true;
+    setExportLaeuft(true); setExportFehler("");
+    const element = druckRef.current;
+    element.setAttribute("data-postpaid-barcodes", mitBarcodes ? "ja" : "nein");
+    try {
+      if (druckModus === "pdf") {
+        await erstellePdf(element, `Bestandsabgleich_${standort.id}_${heuteISO()}`);
+        setDruckModus(null);
+      } else {
+        ReactDOM.flushSync(() => setDruckModus(null));
+        await Promise.all(Array.from(element.querySelectorAll("img")).map(img => img.decode ? img.decode().catch(() => {}) : Promise.resolve()));
+        window.addEventListener("afterprint", () => element.removeAttribute("data-postpaid-barcodes"), { once: true });
+        window.print();
+      }
+    } catch (err) {
+      setExportFehler("Ausgabe fehlgeschlagen. Bitte erneut versuchen.");
+      setDruckModus(null);
+      console.error("Bestandsdruck fehlgeschlagen", err);
+    } finally {
+      if (druckModus === "pdf") element.removeAttribute("data-postpaid-barcodes");
+      exportSperre.current = false;
+      setExportLaeuft(false);
+    }
+  }
   const [suche, setSuche] = useState("");
   const gefunden = einheiten.filter((e) => e.gefunden).length;
   const gesamt = einheiten.length;
@@ -1691,8 +1811,10 @@ function BestandAbgleich({ standort, sessionId, einheiten, zubehoer, onScannen, 
         </Section>
       )}
       <div className="aktionen">
-        <button type="button" className="btn-sekundaer" onClick={() => window.print()}>Drucken</button>
-        <button type="button" className="btn-primaer" onClick={() => erstellePdf(druckRef.current, `Bestandsabgleich_${standort.id}_${heuteISO()}`)}>Als PDF speichern</button>
+        <button type="button" className="btn-sekundaer" disabled={exportLaeuft} onClick={() => setDruckModus("druck")}>Drucken</button>
+        <button type="button" className="btn-primaer" disabled={exportLaeuft} onClick={() => setDruckModus("pdf")}>Als PDF speichern</button>
+        {druckModus && <DruckOptionen modus={druckModus} beschaeftigt={exportLaeuft} onAuswahl={ausgeben} onAbbrechen={() => setDruckModus(null)} />}
+        {exportFehler && <p role="alert">{exportFehler}</p>}
       </div>
     </div>
   );
@@ -1702,7 +1824,7 @@ function liesSessionIdAusURL() {
   return new URLSearchParams(window.location.search).get("bestand") || null;
 }
 
-function Bestandsfuehrung({ standort }) {
+function Bestandsfuehrung({ standort, onStandortGeladen }) {
   const [sessionId, setSessionId] = useState(liesSessionIdAusURL);
   const [sessionStandort, setSessionStandort] = useState(null);
   const [zubehoer, setZubehoer] = useState([]);
@@ -1731,8 +1853,9 @@ function Bestandsfuehrung({ standort }) {
         }
         const d = doc.data();
         setSessionStandort({ id: d.standortId, name: d.standortName, marke: d.marke });
+        if (onStandortGeladen) onStandortGeladen(d.standortId);
         setZubehoer(d.zubehoer || []);
-        setKopf({ shopNummer: d.shopNummer || "", shopName: d.shopName || "", loginKuerzel: d.loginKuerzel || "" });
+        setKopf({ originalKopf: d.originalKopf || "", shopNummer: d.shopNummer || "", shopName: d.shopName || "", loginKuerzel: d.loginKuerzel || "" });
       })
       .catch((err) => aktiv && setFehlerText(speicherfehlertext(err)));
 
@@ -1792,7 +1915,7 @@ function Bestandsfuehrung({ standort }) {
       />
       {fehlerText && <div className="fehler-banner" style={{ margin: "0 16px 16px" }}>{fehlerText}</div>}
       {scannerOffen && <Kamerascanner einheiten={einheiten} onTreffer={treffer} onClose={() => setScannerOffen(false)} />}
-      <div className="druckbereich" ref={druckRef}>
+      <div className="druckbereich" ref={druckRef} style={{width: 850}}>
         <BestandDruckansicht standort={sessionStandort} einheiten={einheiten} zubehoer={zubehoer} kopf={kopf} />
       </div>
     </div>
@@ -1846,6 +1969,21 @@ function SplashLoader() {
   );
 }
 
+function ShopAuswahl({ onAuswahl, onZurueck }) {
+  return <section className="shop-start" aria-labelledby="shop-titel">
+    <header><h1 id="shop-titel">Filialprotokoll</h1><p>Bitte Shop auswählen</p></header>
+    <div className="shop-raster">{STANDORTE.map(shop => <button type="button" key={shop.id} className={`shop-kachel ${shop.marke}`} onClick={() => onAuswahl(shop.id)}>
+      <span className="shop-symbol" aria-hidden="true">🏪</span>
+      <strong>{shop.name.replace(/^o2 /, "O2-Shop ")}</strong>
+      <span className="shop-marke">{shop.marke === "telekom" ? "Telekom" : "o2"}</span>
+    </button>)}</div>
+    <div className="shop-start-aktionen">
+      {onZurueck && <button type="button" className="btn-sekundaer" onClick={onZurueck}>Zurück zum aktuellen Shop</button>}
+      <button type="button" className="btn-sekundaer" onClick={() => auth.signOut()}>Abmelden</button>
+    </div>
+  </section>;
+}
+
 // ===== Kopfbereich + Hauptapp =====
 function Kopfbereich({ standort, onStandortWechsel, datum, onDatumWechsel, bereich, onBereichWechsel, tab, onTabWechsel }) {
   return (
@@ -1856,9 +1994,7 @@ function Kopfbereich({ standort, onStandortWechsel, datum, onDatumWechsel, berei
         <button type="button" className="abmelden-btn" onClick={() => auth.signOut()}>Abmelden</button>
       </div>
       <div className="kopf-felder">
-        <select className="standort-select" value={standort.id} onChange={(e) => onStandortWechsel(e.target.value)}>
-          {STANDORTE.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        <button type="button" className="standort-select shop-wechsel" onClick={onStandortWechsel} aria-label="Shop wechseln">{standort.name} · Shop wechseln</button>
         <input className="datum-input" type="date" value={datum} onChange={(e) => onDatumWechsel(e.target.value)} />
       </div>
       <nav className="hauptmenue">
@@ -1878,23 +2014,35 @@ function Kopfbereich({ standort, onStandortWechsel, datum, onDatumWechsel, berei
 function Hauptapp() {
   const [bereich, setBereich] = useState(() => (liesSessionIdAusURL() ? "bestand" : "kassencheck"));
   const [tab, setTab] = useState("neu");
-  const [standortId, setStandortId] = useState(STANDORTE[0].id);
+  const [standortId, setStandortId] = useState(() => liesSessionIdAusURL() ? STANDORTE[0].id : null);
+  const [shopAuswahlOffen, setShopAuswahlOffen] = useState(() => !liesSessionIdAusURL());
+  function shopWaehlen(id) {
+    if (id !== standortId) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("bestand");
+      window.history.replaceState({}, "", url.toString());
+    }
+    setStandortId(id); setShopAuswahlOffen(false);
+  }
   const [datum, setDatum] = useState(heuteISO());
   const standort = STANDORTE.find((s) => s.id === standortId) || STANDORTE[0];
 
   return (
-    <div className={`app-shell ${standort.marke}`}>
-      <Kopfbereich standort={standort} onStandortWechsel={setStandortId} datum={datum} onDatumWechsel={setDatum} bereich={bereich} onBereichWechsel={setBereich} tab={tab} onTabWechsel={setTab} />
+    <>
+    {shopAuswahlOffen && <ShopAuswahl onAuswahl={shopWaehlen} onZurueck={standortId ? () => setShopAuswahlOffen(false) : null} />}
+    {standortId && <div className={`app-shell ${standort.marke}`} style={{display: shopAuswahlOffen ? "none" : undefined}}>
+      <Kopfbereich standort={standort} onStandortWechsel={() => setShopAuswahlOffen(true)} datum={datum} onDatumWechsel={setDatum} bereich={bereich} onBereichWechsel={setBereich} tab={tab} onTabWechsel={setTab} />
       <main>
         {bereich === "bestand" ? (
-          <Bestandsfuehrung key={standort.id} standort={standort} />
+          <Bestandsfuehrung key={standort.id} standort={standort} onStandortGeladen={setStandortId} />
         ) : tab === "neu" ? (
           <NeuesProtokoll key={standort.id + datum} standort={standort} datum={datum} onGespeichert={() => setTab("historie")} />
         ) : (
           <Historie standort={standort} />
         )}
       </main>
-    </div>
+    </div>}
+    </>
   );
 }
 
