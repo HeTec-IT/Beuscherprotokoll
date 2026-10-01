@@ -1669,36 +1669,61 @@ function HandscannerEingabe({ einheiten, onTreffer }) {
   const [wert, setWert] = useState("");
   const [rueckmeldung, setRueckmeldung] = useState(null);
   const inputRef = useRef(null);
+  // Synchronous buffer prevents an extra scanner Enter from resubmitting a match.
+  const wertRef = useRef("");
+  const meldungTimer = useRef(null);
+  useEffect(() => () => clearTimeout(meldungTimer.current), []);
 
-  function absenden(e) {
-    e.preventDefault();
-    const eingabe = wert;
+  function erfassen(eingabe) {
+    if (!eingabe.replace(/\D/g, "")) return;
+    wertRef.current = "";
     setWert("");
     const ergebnis = bewerteCode(eingabe, einheiten, onTreffer);
     if (ergebnis) {
+      clearTimeout(meldungTimer.current);
       setRueckmeldung({ text: ergebnis.text, art: ergebnis.art });
-      setTimeout(() => setRueckmeldung(null), 1400);
+      meldungTimer.current = setTimeout(() => setRueckmeldung(null), 1400);
     }
     if (inputRef.current) inputRef.current.focus();
   }
 
+  function eingabeAendern(e) {
+    const eingabe = e.target.value;
+    wertRef.current = eingabe;
+    setWert(eingabe);
+    if (e.nativeEvent && e.nativeEvent.isComposing) return;
+    const nummer = eingabe.replace(/\D/g, "");
+    // Only complete list matches; never submit a fragment of a longer listed code.
+    const exakt = nummer && einheiten.some(einheit => einheit.sn === nummer);
+    const laengererCode = exakt && einheiten.some(einheit => einheit.sn.length > nummer.length && einheit.sn.startsWith(nummer));
+    if (exakt && !laengererCode) erfassen(eingabe);
+  }
+
+  function absenden(e) {
+    e.preventDefault();
+    erfassen(wertRef.current);
+  }
+
   return (
     <Section title="Scanner-Eingabe (PC-Handscanner oder Tastatur)">
-      <p className="upload-hinweis">Feld fokussiert lassen - ein angeschlossener Handscanner "tippt" den Code automatisch hier hinein und sendet Enter.</p>
+      <p className="upload-hinweis">Vollständige IMEI oder Seriennummer eingeben oder scannen: Ein eindeutiger Treffer in der Bestandsliste wird automatisch erfasst. Danach ist das Feld sofort bereit für die nächste Nummer. Enter und „Erfassen“ bleiben möglich.</p>
       <form className="handscanner-form" onSubmit={absenden}>
         <input
           ref={inputRef}
           type="text"
           inputMode="numeric"
           className="handscanner-input"
-          placeholder="Barcode scannen oder IMEI/S-Nummer eingeben…"
+          placeholder="IMEI/S-Nummer – automatische Erkennung…"
           value={wert}
-          onChange={(e) => setWert(e.target.value)}
+          onChange={eingabeAendern}
+          onCompositionEnd={eingabeAendern}
+          autoComplete="off"
+          spellCheck={false}
           autoFocus
         />
         <button type="submit" className="btn-primaer" style={{ padding: "0 20px" }}>Erfassen</button>
       </form>
-      {rueckmeldung && <div className={`handscanner-rueckmeldung ${rueckmeldung.art}`}>{rueckmeldung.text}</div>}
+      {rueckmeldung && <div role="status" className={`handscanner-rueckmeldung ${rueckmeldung.art}`}>{rueckmeldung.text}</div>}
     </Section>
   );
 }
