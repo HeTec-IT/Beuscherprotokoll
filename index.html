@@ -377,6 +377,13 @@ function parseDezimal(str) {
   return isNaN(n) ? 0 : n;
 }
 // Löst Stückzahl-Eingaben wie "12+2" oder "12-2" (nachträglich vergessene/zu viel gezählte Münze) zu einer Zahl auf
+function snNorm(x) {
+  return String(x || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+// Vergleichsschlüssel: Y/Z (deutsche Tastatur), O/Q/0, I/L/1, S/5, B/8 gelten als gleich
+function snSchluessel(x) {
+  return snNorm(x).replace(/Y/g, "Z").replace(/[OQ]/g, "0").replace(/[IL]/g, "1").replace(/S/g, "5").replace(/B/g, "8");
+}
 function loeseWertAuf(val) {
   if (typeof val !== "string") {
     const n = Number(val);
@@ -1107,9 +1114,9 @@ function parseBestandstext(text) {
 
     const gruppeMatch = block.match(/Bonusprogramm|Demos|Smartphones|Router|Handset|Accessories/i);
     const artikelGruppe = gruppeMatch ? gruppeMatch[0] : "";
-    const snMatch = block.match(/S\s*[\/I]\s*N\s*:?\s*([\d][\d,.\s]{4,})/i);
+    const snMatch = block.match(/S\s*[\/I]\s*N\s*:?\s*([A-Za-z0-9][A-Za-z0-9,.\s]{4,})/i);
     if (snMatch) {
-      const seriennummern = [...new Set(snMatch[1].match(/\d{6,20}/g) || [])];
+      const seriennummern = [...new Set(snMatch[1].toUpperCase().split(/[\s,.]+/).filter((t) => /^(?=[A-Z0-9]*\d)[A-Z0-9]{6,20}$/.test(t)))];
       if (seriennummern.length === 0) continue;
       const name = bereinigeArtikelname(block.slice(0, snMatch.index)) || nummer;
       seriennummerArtikel.push({ artikelNummer: nummer, name, zeile, artikelGruppe, seriennummern });
@@ -1346,13 +1353,14 @@ function spieleTon(art) {
 
 // Gemeinsame Bewertung eines erfassten Codes (Kamera, Handscanner/PC oder manuelle Eingabe)
 function bewerteCode(rohWert, einheitenListe, onTreffer) {
-  const wert = (rohWert || "").replace(/\D/g, "");
+  const wert = snNorm(rohWert);
   if (!wert) return null;
-  const einheit = einheitenListe.find((e) => e.sn === wert);
+  const key = snSchluessel(wert);
+  const einheit = einheitenListe.find((e) => e.sn === wert) || einheitenListe.find((e) => snSchluessel(e.sn) === key);
   let ergebnis;
   if (einheit && !einheit.gefunden) {
-    onTreffer(wert);
-    ergebnis = { art: "gefunden", text: einheit.name, wert };
+    onTreffer(einheit.sn);
+    ergebnis = { art: "gefunden", text: einheit.name, wert: einheit.sn };
   } else if (einheit) {
     ergebnis = { art: "doppelt", text: "Bereits erfasst", wert };
   } else {
@@ -1467,8 +1475,8 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
             if (codes.length > 0) {
               // Bei mehreren gleichzeitig sichtbaren Codes (z.B. IMEI1 + IMEI2) den bevorzugen,
               // der wirklich in der Liste steht, statt blind den ersten erkannten zu nehmen.
-              const werte = codes.map((c) => (c.rawValue || "").replace(/\D/g, "")).filter(Boolean);
-              const treffer = werte.find((w) => einheitenRef.current.some((e) => e.sn === w)) || werte[0];
+              const werte = codes.map((c) => snNorm(c.rawValue)).filter(Boolean);
+              const treffer = werte.find((w) => einheitenRef.current.some((e) => snSchluessel(e.sn) === snSchluessel(w))) || werte[0];
               const jetzt = Date.now();
               if (treffer && (treffer !== letzterRef.current.code || jetzt - letzterRef.current.zeit > 1500)) {
                 letzterRef.current = { code: treffer, zeit: jetzt };
@@ -1508,7 +1516,8 @@ function Kamerascanner({ einheiten, onTreffer, onClose }) {
       <form className="scanner-manuell" onSubmit={manuellAbsenden}>
         <input
           type="text"
-          inputMode="numeric"
+          inputMode="text"
+          autoCapitalize="characters"
           placeholder="IMEI/S/N manuell eingeben"
           value={manuellerWert}
           onChange={(e) => setManuellerWert(e.target.value)}
@@ -1675,7 +1684,7 @@ function HandscannerEingabe({ einheiten, onTreffer }) {
   useEffect(() => () => clearTimeout(meldungTimer.current), []);
 
   function erfassen(eingabe) {
-    if (!eingabe.replace(/\D/g, "")) return;
+    if (!snNorm(eingabe)) return;
     wertRef.current = "";
     setWert("");
     const ergebnis = bewerteCode(eingabe, einheiten, onTreffer);
@@ -1692,10 +1701,10 @@ function HandscannerEingabe({ einheiten, onTreffer }) {
     wertRef.current = eingabe;
     setWert(eingabe);
     if (e.nativeEvent && e.nativeEvent.isComposing) return;
-    const nummer = eingabe.replace(/\D/g, "");
+    const nummer = snSchluessel(eingabe);
     // Only complete list matches; never submit a fragment of a longer listed code.
-    const exakt = nummer && einheiten.some(einheit => einheit.sn === nummer);
-    const laengererCode = exakt && einheiten.some(einheit => einheit.sn.length > nummer.length && einheit.sn.startsWith(nummer));
+    const exakt = nummer && einheiten.some(einheit => snSchluessel(einheit.sn) === nummer);
+    const laengererCode = exakt && einheiten.some(einheit => { const k = snSchluessel(einheit.sn); return k.length > nummer.length && k.startsWith(nummer); });
     if (exakt && !laengererCode) erfassen(eingabe);
   }
 
@@ -1711,7 +1720,7 @@ function HandscannerEingabe({ einheiten, onTreffer }) {
         <input
           ref={inputRef}
           type="text"
-          inputMode="numeric"
+          inputMode="text"
           className="handscanner-input"
           placeholder="IMEI/S-Nummer – automatische Erkennung…"
           value={wert}
@@ -1780,7 +1789,7 @@ function BestandAbgleich({ standort, sessionId, einheiten, zubehoer, onScannen, 
   const gefiltert = sucheNorm
     ? einheiten.filter(
         (e) =>
-          e.sn.includes(sucheNorm) ||
+          e.sn.toLowerCase().includes(sucheNorm) || snSchluessel(e.sn).includes(snSchluessel(sucheNorm)) ||
           e.artikelNummer.toLowerCase().includes(sucheNorm) ||
           e.name.toLowerCase().includes(sucheNorm)
       )
