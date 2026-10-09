@@ -1092,6 +1092,10 @@ function bereinigeArtikelname(roh) {
   return worte.join(" ").replace(/\s+([,.])/g, "$1").trim();
 }
 
+function bereinigeSeite(text) {
+  return text.split("\n").filter((z) => !/Artikel-?\s*Numm|Artikel-?\s*Grup|Seriennumm|^\s*e\s+er\s+pe\b|gef[uüiî]+hrt\s*e?\s*$|Seite\s*Nr/i.test(z)).join("\n");
+}
+
 function parseBestandstext(text) {
   const artikelRegex = /\d{4}-\d{6}-\d/g;
   const treffer = [];
@@ -1102,6 +1106,7 @@ function parseBestandstext(text) {
 
   const seriennummerArtikel = [];
   const zubehoerArtikel = [];
+  const warnungen = [];
   for (let i = 0; i < treffer.length; i++) {
     const block = text.slice(treffer[i].ende, i + 1 < treffer.length ? treffer[i + 1].index : text.length);
     // zweite Ziffer der Artikel-Nummer steht durch den Spaltenumbruch meist am Anfang der nächsten Zeile (z.B. "...-0" + "0")
@@ -1114,16 +1119,24 @@ function parseBestandstext(text) {
 
     const gruppeMatch = block.match(/Bonusprogramm|Demos|Smartphones|Router|Handset|Accessories/i);
     const artikelGruppe = gruppeMatch ? gruppeMatch[0] : "";
-    const snMatch = block.match(/S\s*[\/I]\s*N\s*:?\s*([A-Za-z0-9][A-Za-z0-9,.\s]{4,})/i);
+    const snMatch = block.match(/[S5]\s*[\/|\\I]\s*N\s*:?\s*([A-Za-z0-9][A-Za-z0-9,.\s]{4,})/i);
+    const mengeJa = block.match(/\bJA\s+(\d{1,4})\b/i);
     if (snMatch) {
-      const seriennummern = [...new Set(snMatch[1].toUpperCase().split(/[\s,.]+/).filter((t) => /^(?=[A-Z0-9]*\d)[A-Z0-9]{6,20}$/.test(t)))];
-      if (seriennummern.length === 0) continue;
+      // Pro Komma/Zeile trennen; OCR-Leerzeichen mitten in der Nummer entfernen
+      const seriennummern = [...new Set(snMatch[1].toUpperCase().split(/[,.\n]/).map((t) => t.replace(/\s+/g, "")).filter((t) => /^(?=[A-Z0-9]*\d)[A-Z0-9]{6,20}$/.test(t)))];
       const name = bereinigeArtikelname(block.slice(0, snMatch.index)) || nummer;
+      if (seriennummern.length === 0 || (mengeJa && Number(mengeJa[1]) !== seriennummern.length)) {
+        warnungen.push(`Zeile ${zeile || "?"} ${name}: ${mengeJa ? mengeJa[1] : "?"} laut Liste, ${seriennummern.length} erkannt`);
+      }
+      if (seriennummern.length === 0) continue;
       seriennummerArtikel.push({ artikelNummer: nummer, name, zeile, artikelGruppe, seriennummern });
     } else {
       // Zubehör ohne Seriennummer (Seriennummer geführt = NEIN): Menge steht direkt nach "NEIN"
       const mengeMatch = block.match(/NEIN\s+(\d{1,4})\b/i);
-      if (!mengeMatch) continue;
+      if (!mengeMatch) {
+        warnungen.push(`Zeile ${zeile || "?"} ${bereinigeArtikelname(block) || nummer}: nicht erkannt`);
+        continue;
+      }
       const name = bereinigeArtikelname(block) || nummer;
       zubehoerArtikel.push({ artikelNummer: nummer, name, zeile, artikelGruppe, menge: Number(mengeMatch[1]) });
     }
@@ -1138,7 +1151,7 @@ function parseBestandstext(text) {
   const shopName = shopMatch ? `o2 Partner Shop ${shopMatch[2].trim()}` : "";
   const loginKuerzel = loginMatch ? loginMatch[1] : "";
 
-  return { einheiten, zubehoer: zubehoerArtikel, shopNummer, shopName, loginKuerzel };
+  return { einheiten, zubehoer: zubehoerArtikel, shopNummer, shopName, loginKuerzel, warnungen };
 }
 
 // Find the pale blue table heading; retain everything above it verbatim.
@@ -1192,7 +1205,7 @@ async function verarbeitePdf(datei, onFortschritt) {
       await seite.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
       if (i === 1) originalKopf = originalKopfAusCanvas(canvas);
       const { data } = await worker.recognize(canvas);
-      volltext += "\n" + data.text;
+      volltext += "\n" + bereinigeSeite(data.text);
     }
   } finally {
     await worker.terminate();
@@ -1200,7 +1213,7 @@ async function verarbeitePdf(datei, onFortschritt) {
   return { ...parseBestandstext(volltext), originalKopf };
 }
 
-async function erstelleBestandsSession(standort, einheiten, zubehoer, kopf) {
+async function erstelleBestandsSession(standort, einheiten, zubehoer, kopf, warnungen) {
   const jetzt = firebase.firestore.Timestamp.now();
   const ablauf = firebase.firestore.Timestamp.fromMillis(Date.now() + AUFBEWAHRUNG_TAGE * 86400000);
   const ref = await db.collection("bestandssessions").add({
@@ -1208,6 +1221,7 @@ async function erstelleBestandsSession(standort, einheiten, zubehoer, kopf) {
     standortName: standort.name,
     marke: standort.marke,
     zubehoer: zubehoer || [],
+    warnungen: warnungen || [],
     originalKopf: (kopf && kopf.originalKopf) || "",
     shopNummer: (kopf && kopf.shopNummer) || "",
     shopName: (kopf && kopf.shopName) || "",
@@ -1250,14 +1264,14 @@ function BestandUpload({ standort, onFertig }) {
     setStatus("ocr");
     setFehlerText("");
     try {
-      const { einheiten, zubehoer, shopNummer, shopName, loginKuerzel, originalKopf } = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
+      const { einheiten, zubehoer, shopNummer, shopName, loginKuerzel, originalKopf, warnungen } = await verarbeitePdf(datei, (seite, gesamt) => setFortschritt({ seite, gesamt }));
       if (einheiten.length === 0 && zubehoer.length === 0) {
         setStatus("fehler");
         setFehlerText("Keine Artikel erkannt. PDF prüfen oder erneut versuchen.");
         return;
       }
       setStatus("speichert");
-      const sessionId = await erstelleBestandsSession(standort, einheiten, zubehoer, { shopNummer, shopName, loginKuerzel, originalKopf });
+      const sessionId = await erstelleBestandsSession(standort, einheiten, zubehoer, { shopNummer, shopName, loginKuerzel, originalKopf }, warnungen);
       onFertig(sessionId);
     } catch (err) {
       setStatus("fehler");
@@ -1751,7 +1765,7 @@ function DruckOptionen({ modus, beschaeftigt, onAuswahl, onAbbrechen }) {
   </dialog>;
 }
 
-function BestandAbgleich({ standort, sessionId, einheiten, zubehoer, onScannen, onNeueListe, onTreffer, druckRef }) {
+function BestandAbgleich({ standort, sessionId, einheiten, zubehoer, warnungen, onScannen, onNeueListe, onTreffer, druckRef }) {
   const [druckModus, setDruckModus] = useState(null);
   const [exportLaeuft, setExportLaeuft] = useState(false);
   const [exportFehler, setExportFehler] = useState("");
@@ -1797,6 +1811,12 @@ function BestandAbgleich({ standort, sessionId, einheiten, zubehoer, onScannen, 
   return (
     <div>
       <BestandQr sessionId={sessionId} />
+      {warnungen && warnungen.length > 0 && (
+        <div className="fehler-banner">
+          <strong>Beim Einlesen nicht vollständig erkannt – bitte mit der Original-Liste prüfen:</strong>
+          <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{warnungen.map((w, i) => <li key={i}>{w}</li>)}</ul>
+        </div>
+      )}
       <Section title="Abgleich">
         <p className="upload-hinweis">{standort.name}</p>
         <div className="abgleich-summe">
@@ -1862,6 +1882,7 @@ function Bestandsfuehrung({ standort, onStandortGeladen }) {
   const [sessionId, setSessionId] = useState(liesSessionIdAusURL);
   const [sessionStandort, setSessionStandort] = useState(null);
   const [zubehoer, setZubehoer] = useState([]);
+  const [warnungen, setWarnungen] = useState([]);
   const [kopf, setKopf] = useState({ shopNummer: "", shopName: "", loginKuerzel: "" });
   const [einheiten, setEinheiten] = useState(null);
   const [scannerOffen, setScannerOffen] = useState(false);
@@ -1889,6 +1910,7 @@ function Bestandsfuehrung({ standort, onStandortGeladen }) {
         setSessionStandort({ id: d.standortId, name: d.standortName, marke: d.marke });
         if (onStandortGeladen) onStandortGeladen(d.standortId);
         setZubehoer(d.zubehoer || []);
+        setWarnungen(d.warnungen || []);
         setKopf({ originalKopf: d.originalKopf || "", shopNummer: d.shopNummer || "", shopName: d.shopName || "", loginKuerzel: d.loginKuerzel || "" });
       })
       .catch((err) => aktiv && setFehlerText(speicherfehlertext(err)));
@@ -1942,6 +1964,7 @@ function Bestandsfuehrung({ standort, onStandortGeladen }) {
         sessionId={sessionId}
         einheiten={einheiten}
         zubehoer={zubehoer}
+        warnungen={warnungen}
         onScannen={() => setScannerOffen(true)}
         onNeueListe={neueListe}
         onTreffer={treffer}
